@@ -60,27 +60,15 @@
 		int mapContainerId = getResourceId("map", "id", getPackageName());
 		Log.debug("layoutId: "+layoutId+", mapContainerId:"+mapContainerId);
 
-		final float scale = dm.density; // dm is defined in GameActivity
 		LayoutInflater inflater = (LayoutInflater) 
 			_activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		// mapPopupWindow = new PopupWindow(
-		// 	inflater.inflate(layoutId, null, false), 
-		// 	(int)(320 * scale), (int)(320 * scale), false);
 		FrameLayout frame = (FrameLayout)inflater.inflate(layoutId, null, false);
-		//FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int)(100 * scale), (int)(100 * scale));
-		//frame.setLayoutParams(lp);
 
-		// Reuse builder from GameActivity.java
-		builder = new AlertDialog.Builder(_activity)
-			.setView(frame)
-		    .setPositiveButton("Back", new DialogInterface.OnClickListener() {
-		        public void onClick(DialogInterface dialog, int which) { 
-		            // continue with delete
+		mapDialog = new Dialog(_activity, android.R.style.Theme_Panel);
+	    mapDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
+	    mapDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+	    mapDialog.setContentView(frame);
 
-		        }
-		     });
-	    mapDialog = builder.create();
-		
 		MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(mapContainerId);
 		mapFragment.getMapAsync(new OnMapReadyCallback() {
 			@Override
@@ -89,6 +77,7 @@
 				//googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
 			}
 		});
+		mapView = mapFragment.getView();
 
 		</insert>
 	</gameActivityOnCreateAdditions>
@@ -96,21 +85,42 @@
 	<gameActivityClassAdditions>
 		<insert>
 			private GoogleMap googleMap;
-			//private PopupWindow mapPopupWindow;
-			AlertDialog mapDialog;
-			private MapFragment mapFragment;
+			private Dialog mapDialog;
+			private View mapView;
 
-			public void AndroidThunkJava_GoogleMapsExample(Integer AdMobAdUnitID) {
-
+			public void AndroidThunkJava_CreateGoogleMap(float posX, float posY, float sizeX, float sizeY, float renderX) {
+				Log.debug("In AndroidThunkJava_CreateGoogleMap");
+				DisplayMetrics dm = getResources().getDisplayMetrics();
+				float scale = dm.widthPixels/renderX;
+				
+				// Move map
+				final WindowManager.LayoutParams wmlp = mapDialog.getWindow().getAttributes();
+				wmlp.gravity = Gravity.TOP | Gravity.LEFT;
+				wmlp.x = (int)(posX*scale);
+				wmlp.y = (int)(posY*scale);
+				
+				// Set map size
+				mapView.getLayoutParams().width = (int)(sizeX*scale);
+     			mapView.getLayoutParams().height = (int)(sizeY*scale);
+								
 				_activity.runOnUiThread(new Runnable()
 				{
 					@Override
 					public void run()
 					{
-						//setContentView(frame);
-						//mapPopupWindow.showAtLocation(activityLayout, Gravity.CENTER, 0, 0);
-						//mapPopupWindow.update();
 						mapDialog.show();
+					}
+				});
+			}
+
+			public void AndroidThunkJava_RemoveGoogleMap() {
+				_activity.runOnUiThread(new Runnable()
+				{
+					@Override
+					public void run()
+					{
+						if(mapDialog!=null)
+							mapDialog.dismiss();
 					}
 				});
 			}

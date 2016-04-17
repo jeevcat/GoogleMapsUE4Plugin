@@ -8,33 +8,49 @@
 #include "Android/AndroidApplication.h"
 #endif
 
-DEFINE_LOG_CATEGORY(LogAdBox);
+DEFINE_LOG_CATEGORY(LogGoogleMaps);
 
 UGoogleMapsFunctionLibrary::UGoogleMapsFunctionLibrary(FObjectInitializer const&) {}
 
-void UGoogleMapsFunctionLibrary::GoogleMapsExample(int32 adID)
-{
 #if PLATFORM_ANDROID
-	AndroidThunkCpp_GoogleMapsExample(adID);
+static jmethodID AndroidThunkJava_CreateGoogleMap;
+static jmethodID AndroidThunkJava_RemoveGoogleMap;
 #endif
-}
 
-
-#if PLATFORM_ANDROID
-static jmethodID AndroidThunkJava_GoogleMapsExample;
-
-// call out to JNI to see if the application was packaged for GearVR
-void AndroidThunkCpp_GoogleMapsExample(int32 adID)
+void UGoogleMapsFunctionLibrary::CreateGoogleMap(FVector2D Position, FVector2D Size)
 {
+#if PLATFORM_ANDROID
+	// call out to JNI to see if the application was packaged for GearVR
 	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
 	{
-		if (AndroidThunkJava_GoogleMapsExample)
+		if (AndroidThunkJava_CreateGoogleMap)
 		{
-			FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GoogleServicesThis, AndroidThunkJava_GoogleMapsExample, adID);
+			jfloat resX = GSystemResolution.ResX;
+			jfloat pX = Position.X;
+			jfloat pY = Position.Y;
+			jfloat sX = Size.X;
+			jfloat sY = Size.Y;
+			UE_LOG(LogGoogleMaps, Log, TEXT("Displaying GoogleMap at %.1f,%.1f, size:%.1f,%.1f"), pX, pY, sX, sY);
+			FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, AndroidThunkJava_CreateGoogleMap, pX, pY, sX, sY, resX);
 		}
 	}
-}
 #endif
+}
+
+void UGoogleMapsFunctionLibrary::RemoveGoogleMap()
+{
+#if PLATFORM_ANDROID
+	// call out to JNI to see if the application was packaged for GearVR
+	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+	{
+		if (AndroidThunkJava_RemoveGoogleMap)
+		{
+			FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, AndroidThunkJava_RemoveGoogleMap);
+		}
+	}
+#endif
+}
+
 
 
 class FGoogleMaps : public IGoogleMaps
@@ -46,8 +62,6 @@ class FGoogleMaps : public IGoogleMaps
 
 IMPLEMENT_MODULE( FGoogleMaps, GoogleMaps)
 
-
-
 void FGoogleMaps::StartupModule()
 {
 	// This code will execute after your module is loaded into memory (but after global variables are initialized, of course.)
@@ -56,7 +70,8 @@ void FGoogleMaps::StartupModule()
 	{
 		if (FJavaWrapper::GameActivityClassID)
 		{
-			AndroidThunkJava_GoogleMapsExample = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_GoogleMapsExample", "(Ljava/lang/Integer;)V", true);
+			AndroidThunkJava_CreateGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_CreateGoogleMap", "(FFFFF)V", false);
+			AndroidThunkJava_RemoveGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_RemoveGoogleMap", "()V", true);
 		}
 	}
 #endif

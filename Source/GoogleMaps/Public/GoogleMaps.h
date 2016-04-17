@@ -12,9 +12,8 @@ private:
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Utilities|Platform")
-		static void GoogleMapsExample(int32 adID);
-};
+	static void CreateGoogleMap(FVector2D Position, FVector2D Size);
 
-#if PLATFORM_ANDROID
-void AndroidThunkCpp_GoogleMapsExample(int32 adID);
-#endif
+	UFUNCTION(BlueprintCallable, Category = "Utilities|Platform")
+	static void RemoveGoogleMap();
+};
