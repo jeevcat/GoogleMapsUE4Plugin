@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--AdBox plugin additions-->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+	<androidManifestUpdates>
+
+		<addElements tag="application">
+				<meta-data android:name="com.google.android.gms.version" 
+					android:value="@integer/google_play_services_version" />
+			<!--<meta-data android:name="com.google.android.geo.API_KEY"
+					android:value="AIzaSyAIahxW93kRq42j2hnpK_5HBDXv4oufb8w"/>-->
+			<meta-data android:name="com.google.android.geo.API_KEY"
+					android:value="AIzaSyChN7lO4AdIZQR1hIItdThFjbqEjCwqT00"/>     
+		</addElements>
+
+		<addElements tag="manifest">
+			<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+		</addElements>	
+	</androidManifestUpdates>
+
+	<prebuildCopies>
+		<copyDir src="$S(PluginDir)/Java" dst="$S(BuildDir)" />
+	</prebuildCopies>
+
+	<proguardAdditions>
+    	<insert>
+    		-keep class * extends java.util.ListResourceBundle {
+			    protected Object[][] getContents();
+			}
+
+			-keep public class com.google.android.gms.common.internal.safeparcel.SafeParcelable {
+			    public static final *** NULL;
+			}
+
+			-keepnames @com.google.android.gms.common.annotation.KeepName class *
+			-keepclassmembernames class * {
+			    @com.google.android.gms.common.annotation.KeepName *;
+			}
+
+			-keepnames class * implements android.os.Parcelable {
+			    public static final ** CREATOR;
+			}
+	    </insert>
+	</proguardAdditions>
+	
+	<gameActivityImportAdditions>
+		<insert>
+			import android.os.Bundle;
+			import android.view.LayoutInflater;
+			import android.widget.FrameLayout;
+			import com.google.android.gms.maps.GoogleMap;
+			import com.google.android.gms.maps.OnMapReadyCallback;
+			import com.google.android.gms.maps.MapFragment;
+		</insert>
+	</gameActivityImportAdditions>
+	<gameActivityOnCreateAdditions>
+		<insert>
+		// getResourceId() defined in GameActivity.java
+		int layoutId = getResourceId("popup_example", "layout", getPackageName());
+		int mapContainerId = getResourceId("map", "id", getPackageName());
+		Log.debug("layoutId: "+layoutId+", mapContainerId:"+mapContainerId);
+
+		final float scale = dm.density; // dm is defined in GameActivity
+		LayoutInflater inflater = (LayoutInflater) 
+			_activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		// mapPopupWindow = new PopupWindow(
+		// 	inflater.inflate(layoutId, null, false), 
+		// 	(int)(320 * scale), (int)(320 * scale), false);
+		frame = (FrameLayout)inflater.inflate(layoutId, null, false);
+		FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int)(320 * scale), (int)(320 * scale));
+		frame.setLayoutParams(lp);
+
+		
+		MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(mapContainerId);
+		mapFragment.getMapAsync(new OnMapReadyCallback() {
+			@Override
+			public void onMapReady(GoogleMap googleMap) {
+				Log.debug("Google Map ready");
+				//googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+			}
+		});
+
+		</insert>
+	</gameActivityOnCreateAdditions>
+	
+	<gameActivityClassAdditions>
+		<insert>
+			private GoogleMap googleMap;
+			//private PopupWindow mapPopupWindow;
+			FrameLayout frame;
+			private MapFragment mapFragment;
+
+			public void AndroidThunkJava_GoogleMapsExample(Integer AdMobAdUnitID) {
+
+				_activity.runOnUiThread(new Runnable()
+				{
+					@Override
+					public void run()
+					{
+						//setContentView(frame);
+						//mapPopupWindow.showAtLocation(activityLayout, Gravity.CENTER, 0, 0);
+						//mapPopupWindow.update();
+						new AlertDialog.Builder(_activity)
+							.setView(frame)
+						    .setPositiveButton("Close", new DialogInterface.OnClickListener() {
+						        public void onClick(DialogInterface dialog, int which) { 
+						            // continue with delete
+
+						        }
+						     })
+						     .show();
+					}
+				});
+			}
+	</insert>
+	</gameActivityClassAdditions>
+</root>
