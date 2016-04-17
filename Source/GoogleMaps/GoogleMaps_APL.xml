@@ -56,7 +56,7 @@
 	<gameActivityOnCreateAdditions>
 		<insert>
 		// getResourceId() defined in GameActivity.java
-		int layoutId = getResourceId("popup_example", "layout", getPackageName());
+		int layoutId = getResourceId("map_frame", "layout", getPackageName());
 		int mapContainerId = getResourceId("map", "id", getPackageName());
 		Log.debug("layoutId: "+layoutId+", mapContainerId:"+mapContainerId);
 
@@ -66,10 +66,20 @@
 		// mapPopupWindow = new PopupWindow(
 		// 	inflater.inflate(layoutId, null, false), 
 		// 	(int)(320 * scale), (int)(320 * scale), false);
-		frame = (FrameLayout)inflater.inflate(layoutId, null, false);
-		FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int)(320 * scale), (int)(320 * scale));
-		frame.setLayoutParams(lp);
+		FrameLayout frame = (FrameLayout)inflater.inflate(layoutId, null, false);
+		//FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int)(100 * scale), (int)(100 * scale));
+		//frame.setLayoutParams(lp);
 
+		// Reuse builder from GameActivity.java
+		builder = new AlertDialog.Builder(_activity)
+			.setView(frame)
+		    .setPositiveButton("Back", new DialogInterface.OnClickListener() {
+		        public void onClick(DialogInterface dialog, int which) { 
+		            // continue with delete
+
+		        }
+		     });
+	    mapDialog = builder.create();
 		
 		MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(mapContainerId);
 		mapFragment.getMapAsync(new OnMapReadyCallback() {
@@ -87,7 +97,7 @@
 		<insert>
 			private GoogleMap googleMap;
 			//private PopupWindow mapPopupWindow;
-			FrameLayout frame;
+			AlertDialog mapDialog;
 			private MapFragment mapFragment;
 
 			public void AndroidThunkJava_GoogleMapsExample(Integer AdMobAdUnitID) {
@@ -100,15 +110,7 @@
 						//setContentView(frame);
 						//mapPopupWindow.showAtLocation(activityLayout, Gravity.CENTER, 0, 0);
 						//mapPopupWindow.update();
-						new AlertDialog.Builder(_activity)
-							.setView(frame)
-						    .setPositiveButton("Close", new DialogInterface.OnClickListener() {
-						        public void onClick(DialogInterface dialog, int which) { 
-						            // continue with delete
-
-						        }
-						     })
-						     .show();
+						mapDialog.show();
 					}
 				});
 			}
