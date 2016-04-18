@@ -15,39 +15,58 @@ UGoogleMapsFunctionLibrary::UGoogleMapsFunctionLibrary(FObjectInitializer const&
 #if PLATFORM_ANDROID
 static jmethodID AndroidThunkJava_CreateGoogleMap;
 static jmethodID AndroidThunkJava_RemoveGoogleMap;
+static jmethodID AndroidThunkJava_ConnectGoogleAPI;
+static jmethodID AndroidThunkJava_DisconnectGoogleAPI;
+#endif
+#if PLATFORM_ANDROID
+void UGoogleMapsFunctionLibrary::CallVoidMethodWithExceptionCheck(jmethodID Method, ...)
+{
+	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+	{
+		if (Method)
+		{
+			va_list Args;
+			va_start(Args, Method);
+			Env->CallVoidMethodV(FJavaWrapper::GameActivityThis, Method, Args);
+			va_end(Args);
+		}
+	}		
+	if (FAndroidApplication::CheckJavaException())
+		UE_LOG(LogGoogleMaps, Log, TEXT("Previous JNI call threw exception"));
+}
 #endif
 
 void UGoogleMapsFunctionLibrary::CreateGoogleMap(FVector2D Position, FVector2D Size)
 {
 #if PLATFORM_ANDROID
-	// call out to JNI to see if the application was packaged for GearVR
-	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
-	{
-		if (AndroidThunkJava_CreateGoogleMap)
-		{
-			jfloat resX = GSystemResolution.ResX;
-			jfloat pX = Position.X;
-			jfloat pY = Position.Y;
-			jfloat sX = Size.X;
-			jfloat sY = Size.Y;
-			UE_LOG(LogGoogleMaps, Log, TEXT("Displaying GoogleMap at %.1f,%.1f, size:%.1f,%.1f"), pX, pY, sX, sY);
-			FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, AndroidThunkJava_CreateGoogleMap, pX, pY, sX, sY, resX);
-		}
-	}
+	jfloat resX = GSystemResolution.ResX;
+	jfloat pX = Position.X;
+	jfloat pY = Position.Y;
+	jfloat sX = Size.X;
+	jfloat sY = Size.Y;
+	UE_LOG(LogGoogleMaps, Log, TEXT("Displaying GoogleMap at %.1f,%.1f, size:%.1f,%.1f"), pX, pY, sX, sY);
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_CreateGoogleMap, pX, pY, sX, sY, resX);
 #endif
 }
 
 void UGoogleMapsFunctionLibrary::RemoveGoogleMap()
 {
 #if PLATFORM_ANDROID
-	// call out to JNI to see if the application was packaged for GearVR
-	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
-	{
-		if (AndroidThunkJava_RemoveGoogleMap)
-		{
-			FJavaWrapper::CallVoidMethod(Env, FJavaWrapper::GameActivityThis, AndroidThunkJava_RemoveGoogleMap);
-		}
-	}
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_RemoveGoogleMap);
+#endif
+}
+
+void UGoogleMapsFunctionLibrary::ConnectToGoogleAPI()
+{
+#if PLATFORM_ANDROID
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_ConnectGoogleAPI);
+#endif
+}
+
+void UGoogleMapsFunctionLibrary::DisconnectFromGoogleAPI()
+{
+#if PLATFORM_ANDROID
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_DisconnectGoogleAPI);
 #endif
 }
 
@@ -72,6 +91,8 @@ void FGoogleMaps::StartupModule()
 		{
 			AndroidThunkJava_CreateGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_CreateGoogleMap", "(FFFFF)V", false);
 			AndroidThunkJava_RemoveGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_RemoveGoogleMap", "()V", true);
+			AndroidThunkJava_ConnectGoogleAPI = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_ConnectGoogleAPI", "()V", true);
+			AndroidThunkJava_DisconnectGoogleAPI = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_DisconnectGoogleAPI", "()V", true);
 		}
 	}
 #endif

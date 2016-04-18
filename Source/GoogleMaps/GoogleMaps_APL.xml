@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--AdBox plugin additions-->
+<!--GoogleMaps plugin additions-->
 <root xmlns:android="http://schemas.android.com/apk/res/android">
 	<androidManifestUpdates>
 
@@ -48,13 +48,31 @@
 			import android.os.Bundle;
 			import android.view.LayoutInflater;
 			import android.widget.FrameLayout;
+			import android.view.ViewTreeObserver;
 			import com.google.android.gms.maps.GoogleMap;
 			import com.google.android.gms.maps.OnMapReadyCallback;
 			import com.google.android.gms.maps.MapFragment;
+			import com.google.android.gms.maps.model.LatLng;
+			import com.google.android.gms.maps.CameraUpdateFactory;
+			import com.google.android.gms.location.LocationRequest;
+			import com.google.android.gms.location.LocationServices;
+			import com.google.android.gms.location.LocationSettingsRequest;
+			import com.google.android.gms.location.LocationSettingsResult;
+			import com.google.android.gms.location.LocationSettingsStatusCodes;
+			import com.google.android.gms.location.LocationListener;
+			import com.google.android.gms.location.FusedLocationProviderApi;
+			import com.google.android.gms.common.ConnectionResult;
+			import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+			import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+			import com.google.android.gms.common.api.PendingResult;
+			import com.google.android.gms.common.api.ResultCallback;
+			import com.google.android.gms.common.api.Status;
+			import android.location.Location;
 		</insert>
 	</gameActivityImportAdditions>
 	<gameActivityOnCreateAdditions>
 		<insert>
+		// Create GoogleMap Dialog
 		// getResourceId() defined in GameActivity.java
 		int layoutId = getResourceId("map_frame", "layout", getPackageName());
 		int mapContainerId = getResourceId("map", "id", getPackageName());
@@ -64,29 +82,128 @@
 			_activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		FrameLayout frame = (FrameLayout)inflater.inflate(layoutId, null, false);
 
-		mapDialog = new Dialog(_activity, android.R.style.Theme_Panel);
-	    mapDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
-	    mapDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-	    mapDialog.setContentView(frame);
+		mMapDialog = new Dialog(_activity, android.R.style.Theme_Panel);
+	    mMapDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
+	    mMapDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+	    mMapDialog.setContentView(frame);
+	    mMapDialogIsShown = false;
 
 		MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(mapContainerId);
 		mapFragment.getMapAsync(new OnMapReadyCallback() {
 			@Override
-			public void onMapReady(GoogleMap googleMap) {
+			public void onMapReady(GoogleMap map) {
 				Log.debug("Google Map ready");
-				//googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+				mGoogleMap = map;
 			}
 		});
-		mapView = mapFragment.getView();
+		mMapView = mapFragment.getView();
+
+
+		// Create an instance of GoogleAPIClient.
+	    mGoogleApiClient = new GoogleApiClient.Builder(_activity)
+	        .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks(){
+	        	@Override
+			    public void onConnected(Bundle connectionHint) {
+			    	Log.debug("New LocationRequest");
+			    	mLocationRequest = new LocationRequest();
+				    mLocationRequest.setInterval(10000);
+				    mLocationRequest.setFastestInterval(5000);
+				    mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+				    Log.debug("Checking for GPS settings");
+				    LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+ 						.addLocationRequest(mLocationRequest);
+					PendingResult&lt;LocationSettingsResult&gt; result =
+						LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient,
+						    builder.build());
+					result.setResultCallback(new ResultCallback&lt;LocationSettingsResult&gt;() {
+					    @Override
+					    public void onResult(LocationSettingsResult result) {
+					        final Status status = result.getStatus();
+					        //final LocationSettingsStates = result.getLocationSettingsStates();
+					        switch (status.getStatusCode()) {
+					            case LocationSettingsStatusCodes.SUCCESS:
+					                // All location settings are satisfied. The client can
+					                // initialize location requests here.
+					            	Log.debug("All location settings are satisfied. Initialising location requests");
+					                startLocationUpdates();
+					                break;
+					            case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+					                // Location settings are not satisfied, but this can be fixed
+					                // by showing the user a dialog.
+					            	Log.debug("Location settings are not satisfied, showing the user a dialog.");
+					                try {
+					                    // Show the dialog by calling startResolutionForResult(),
+					                    // and check the result in onActivityResult().
+					                    status.startResolutionForResult(
+					                        _activity,
+					                        REQUEST_CHECK_SETTINGS);
+					                } catch (SendIntentException e) {
+					                    // Ignore the error.
+					                }
+					                break;
+					            case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+					            	Log.debug("Location settings are not satisfied. Can't fix settings");
+					                // Location settings are not satisfied. However, we have no way
+					                // to fix the settings so we won't show the dialog.
+					                break;
+					        }
+					    }
+					});
+			    }
+		     	@Override
+                public void onConnectionSuspended(int cause) {
+                	Log.debug("onConnectionSuspended() called. Trying to reconnect.");
+                }
+	        })
+	        .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener(){
+	        	@Override
+                public void onConnectionFailed(ConnectionResult result) {
+                    Log.debug("Google API connection failed: Has resolution? " + result.hasResolution());
+                }
+	        })
+	        .addApi(LocationServices.API)
+	        .build();
 
 		</insert>
 	</gameActivityOnCreateAdditions>
 	
 	<gameActivityClassAdditions>
 		<insert>
-			private GoogleMap googleMap;
-			private Dialog mapDialog;
-			private View mapView;
+    		protected static final int REQUEST_CHECK_SETTINGS = 0x1;
+			private Dialog mMapDialog;
+			private boolean mMapDialogIsShown;
+			private View mMapView;
+			private GoogleMap mGoogleMap;
+			private LocationRequest mLocationRequest;
+			private Location mLastLocation;
+			private GoogleApiClient mGoogleApiClient;
+
+			private LocationListener mLocationListener = new LocationListener(){
+				@Override
+			    public void onLocationChanged(Location location) {
+			        mLastLocation = location;
+			        Log.debug("Lat:"+location.getLatitude()+", Lon:"+location.getLongitude());
+			        //mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
+			    }
+			};
+
+			private void startLocationUpdates(){
+				mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, 
+					mLocationRequest, mLocationListener);
+                mGoogleMap.setMyLocationEnabled(true);
+                _activity.runOnUiThread(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+			                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+			                	new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()), 18));
+			            }
+			        });
+			}
+
 
 			public void AndroidThunkJava_CreateGoogleMap(float posX, float posY, float sizeX, float sizeY, float renderX) {
 				Log.debug("In AndroidThunkJava_CreateGoogleMap");
@@ -94,36 +211,108 @@
 				float scale = dm.widthPixels/renderX;
 				
 				// Move map
-				final WindowManager.LayoutParams wmlp = mapDialog.getWindow().getAttributes();
+				final WindowManager.LayoutParams wmlp = mMapDialog.getWindow().getAttributes();
 				wmlp.gravity = Gravity.TOP | Gravity.LEFT;
 				wmlp.x = (int)(posX*scale);
 				wmlp.y = (int)(posY*scale);
 				
 				// Set map size
-				mapView.getLayoutParams().width = (int)(sizeX*scale);
-     			mapView.getLayoutParams().height = (int)(sizeY*scale);
-								
+				mMapView.getLayoutParams().width = (int)(sizeX*scale);
+     			mMapView.getLayoutParams().height = (int)(sizeY*scale);
+				
+				mMapDialogIsShown = true;
 				_activity.runOnUiThread(new Runnable()
 				{
 					@Override
 					public void run()
 					{
-						mapDialog.show();
+						mMapDialog.show();
 					}
 				});
 			}
 
 			public void AndroidThunkJava_RemoveGoogleMap() {
-				_activity.runOnUiThread(new Runnable()
-				{
-					@Override
-					public void run()
+				Log.debug("In AndroidThunkJava_RemoveGoogleMap");
+				if(mMapDialog!=null){
+					mMapDialogIsShown = false;
+					_activity.runOnUiThread(new Runnable()
 					{
-						if(mapDialog!=null)
-							mapDialog.dismiss();
+						@Override
+						public void run()
+						{
+							Log.debug("Dismissing GoogleMap");
+							mMapDialog.dismiss();
+						}
+					});
+				}
+			}
+
+			public void AndroidThunkJava_ConnectGoogleAPI() {
+				Log.debug("In AndroidThunkJava_ConnectGoogleAPI");
+				mGoogleApiClient.connect();
+			}
+			public void AndroidThunkJava_DisconnectGoogleAPI() {
+				Log.debug("In AndroidThunkJava_DisconnectGoogleAPI");
+				if (mGoogleApiClient!=null)
+					if(mGoogleApiClient.isConnected())
+					{
+						LocationServices.FusedLocationApi.removeLocationUpdates(
+		            		mGoogleApiClient, mLocationListener);
+						mGoogleApiClient.disconnect();
+						_activity.runOnUiThread(new Runnable()
+						{
+							@Override
+							public void run()
+							{
+								mGoogleMap.setMyLocationEnabled(false);
+							}
+						});
 					}
+			}
+		</insert>
+	</gameActivityClassAdditions>
+
+	<gameActivityOnActivityResultAdditions>	
+		<insert>
+			if(requestCode == REQUEST_CHECK_SETTINGS){
+				switch (resultCode) {
+                    case RESULT_OK:
+                        Log.debug("User agreed to make required location settings changes.");
+                        startLocationUpdates();
+                        break;
+                    case RESULT_CANCELED:
+                        Log.debug("User chose not to make required location settings changes.");
+                        break;
+                }
+			}
+		</insert>
+	</gameActivityOnActivityResultAdditions>
+	<gameActivityOnPauseAdditions>
+		<insert>
+		mMapDialog.hide();
+		</insert>
+	</gameActivityOnPauseAdditions>
+	<gameActivityOnResumeAdditions>
+		<insert>
+			if(mMapDialogIsShown) {
+				Log.debug("Reshowing MapDialog");
+				ViewTreeObserver vto = findViewById(android.R.id.content).getViewTreeObserver(); 
+				vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() { 
+				    @Override 
+				    public void onGlobalLayout() { 
+				    	Log.debug("In OnResume OnGlobalLayoutListener");
+				        findViewById(android.R.id.content).getViewTreeObserver().removeOnGlobalLayoutListener(_activity); 
+				        _activity.runOnUiThread(new Runnable(){
+							@Override
+							public void run()
+							{
+								mMapDialog.show();
+							}
+						});
+				    } 
 				});
 			}
-	</insert>
-	</gameActivityClassAdditions>
+			
+		</insert>
+	</gameActivityOnResumeAdditions>
 </root>

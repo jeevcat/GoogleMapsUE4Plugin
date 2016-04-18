@@ -8,12 +8,20 @@ class UGoogleMapsFunctionLibrary : public UBlueprintFunctionLibrary
 	GENERATED_UCLASS_BODY()
 
 private:
-	// Nothing here
-
+#if PLATFORM_ANDROID
+	static void CallVoidMethodWithExceptionCheck(jmethodID Method, ...);
+#endif
 public:
-	UFUNCTION(BlueprintCallable, Category = "Utilities|Platform")
+	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
 	static void CreateGoogleMap(FVector2D Position, FVector2D Size);
 
-	UFUNCTION(BlueprintCallable, Category = "Utilities|Platform")
+	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
 	static void RemoveGoogleMap();
+
+	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
+	static void ConnectToGoogleAPI();
+
+	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
+	static void DisconnectFromGoogleAPI();
+
 };
