@@ -185,6 +185,7 @@
 			        mLastLocation = location;
 			        Log.debug("Lat:"+location.getLatitude()+", Lon:"+location.getLongitude());
 			        //mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
+			        nativeLocationChanged(location.getLatitude(), location.getLongitude());
 			    }
 			};
 
@@ -269,6 +270,8 @@
 						});
 					}
 			}
+
+		public native void nativeLocationChanged(double lat, double lng);
 		</insert>
 	</gameActivityClassAdditions>
 

@@ -24,4 +24,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
 	static void DisconnectFromGoogleAPI();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "Utilities|Google Maps")
+	void OnLocationChanged(float Latitude, float Longitude);
+
 };

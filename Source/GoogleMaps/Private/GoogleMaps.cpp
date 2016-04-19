@@ -10,6 +10,10 @@
 
 DEFINE_LOG_CATEGORY(LogGoogleMaps);
 
+
+
+// **** GoogleMaps BlueprintFunctionLibrary **** //
+
 UGoogleMapsFunctionLibrary::UGoogleMapsFunctionLibrary(FObjectInitializer const&) {}
 
 #if PLATFORM_ANDROID
@@ -19,6 +23,7 @@ static jmethodID AndroidThunkJava_ConnectGoogleAPI;
 static jmethodID AndroidThunkJava_DisconnectGoogleAPI;
 #endif
 #if PLATFORM_ANDROID
+
 void UGoogleMapsFunctionLibrary::CallVoidMethodWithExceptionCheck(jmethodID Method, ...)
 {
 	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
@@ -70,7 +75,7 @@ void UGoogleMapsFunctionLibrary::DisconnectFromGoogleAPI()
 #endif
 }
 
-
+// **** GoogleMaps Module Interface **** //
 
 class FGoogleMaps : public IGoogleMaps
 {
@@ -98,9 +103,19 @@ void FGoogleMaps::StartupModule()
 #endif
 }
 
-
 void FGoogleMaps::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 }
+
+
+// **** GoogleMaps native functions **** //
+
+#if PLATFORM_ANDROID
+extern "C" void Java_com_epicgames_ue4_GameActivity_nativeLocationChanged(JNIEnv* jenv, jobject thiz, jdouble lat, jdouble lng)
+{
+	UE_LOG(LogGoogleMaps, Log, TEXT("nativeLocationChanged lat=%.4f and lng=%.4f"), lat, lng);
+
+}
+#endif
