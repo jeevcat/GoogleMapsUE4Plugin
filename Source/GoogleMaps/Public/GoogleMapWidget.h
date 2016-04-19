@@ -12,21 +12,23 @@ UCLASS(MinimalAPI)
 class UGoogleMapWidget : public UUserWidget
 {
 	GENERATED_BODY()
+
+private:
+	void CreateGoogleMap(FVector2D Position, FVector2D Size);
+	void RemoveGoogleMap();
+	bool initialised;
 	
 public:
-	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
-		void CreateGoogleMap(FVector2D Position, FVector2D Size);
-
-	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
-		void RemoveGoogleMap();
-
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual void NativeDestruct() override;
 	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
 		void ConnectToGoogleAPI();
 
 	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
 		void DisconnectFromGoogleAPI();
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "Utilities|Google Maps")
+	/** New GPS location has been received */
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Location Changed"))
 		void OnLocationChanged(float Latitude, float Longitude);
 	
 	

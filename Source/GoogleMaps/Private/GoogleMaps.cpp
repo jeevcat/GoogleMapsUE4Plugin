@@ -2,6 +2,7 @@
 
 #include "GoogleMapsPrivatePCH.h"
 #include "GoogleMaps.h"
+#include "GoogleMapWidget.h"
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidJNI.h"
@@ -28,14 +29,6 @@ void CallVoidMethodWithExceptionCheck(jmethodID Method, ...)
 	}		
 	if (FAndroidApplication::CheckJavaException())
 		UE_LOG(LogGoogleMaps, Log, TEXT("Previous JNI call threw exception"));
-}
-
-// **** GoogleMaps native functions **** //
-
-extern "C" void Java_com_epicgames_ue4_GameActivity_nativeLocationChanged(JNIEnv* jenv, jobject thiz, jdouble lat, jdouble lng)
-{
-	UE_LOG(LogGoogleMaps, Log, TEXT("nativeLocationChanged lat=%.4f and lng=%.4f"), lat, lng);
-
 }
 #endif
 
