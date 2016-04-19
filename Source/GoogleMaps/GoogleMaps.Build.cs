@@ -26,7 +26,9 @@ namespace UnrealBuildTool.Rules
 				{
 					"Core",
                     "CoreUObject",
-                    "Engine"   
+                    "Engine",
+                    "InputCore",
+                    "UMG"
 					// ... add other public dependencies that you statically link with here ...
 				}
 				);
@@ -34,6 +36,8 @@ namespace UnrealBuildTool.Rules
 			PrivateDependencyModuleNames.AddRange(
 				new string[]
 				{
+                    "Slate",
+                    "SlateCore" 
 					// ... add private dependencies that you statically link with here ...
 				}
 				);
@@ -46,7 +50,7 @@ namespace UnrealBuildTool.Rules
 				);
             if (Target.Platform == UnrealTargetPlatform.Android)
             {
-                PrivateDependencyModuleNames.AddRange(new string[] { "Launch" });
+                PrivateDependencyModuleNames.AddRange(new string[] { "Launch"});
 
                 string PluginPath = Utils.MakePathRelativeTo(ModuleDirectory, BuildConfiguration.RelativeEnginePath);
                 AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", Path.Combine(PluginPath, "GoogleMaps_APL.xml")));
