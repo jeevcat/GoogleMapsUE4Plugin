@@ -3,6 +3,7 @@
 #include "GoogleMapsPrivatePCH.h"
 #include "GoogleMaps.h"
 #include "GoogleMapWidget.h"
+#include "GenericPlatform/GenericPlatformMath.h"
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidJNI.h"
@@ -32,6 +33,12 @@ void CallVoidMethodWithExceptionCheck(jmethodID Method, ...)
 }
 #endif
 
+float getDistanceFromLatLonInKm(float lat1, float lon1, float lat2, float lon2) {
+	float x = (lon2 - lon1)*(PI / 180.f) * FGenericPlatformMath::Cos((lat1 + lat2) * (PI / 180.f) / 2);
+	float y = (lat2 - lat1)* (PI / 180.f);
+	float R = 6371;
+	return FGenericPlatformMath::Sqrt(x*x + y*y) * R;
+}
 
 
 // **** GoogleMaps Module Interface **** //

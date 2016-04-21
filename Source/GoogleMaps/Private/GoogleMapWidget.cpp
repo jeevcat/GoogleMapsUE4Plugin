@@ -13,6 +13,31 @@ DEFINE_LOG_CATEGORY(LogGoogleMaps);
 
 static UGoogleMapWidget* AttachedWidget = NULL;
 
+UGoogleMapWidget::UGoogleMapWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer), GPSConnected(false), TotalDistance(0), Split(0), StartTime(0)
+{}
+
+void UGoogleMapWidget::LocationChanged(float lat, float lng)
+{	//First time this is run
+	if (!GPSConnected) {
+		GPSConnected = true;
+		StartTime = FDateTime::Now();
+	}
+
+	GPSPoints.Emplace(lat, lng);
+
+	if (GPSPoints.Num() > 1) {
+		UpdateSplit(0.2f);
+		TotalDistance += getDistanceFromLatLonInKm(GPSPoints.Last(1).Latitude,
+			GPSPoints.Last(1).Longitude,
+			lat,
+			lng);
+	}
+
+	// Send location to BP
+	OnLocationChanged((float)lat, (float)lng);
+}
+
 //Override
 void UGoogleMapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -37,6 +62,7 @@ void UGoogleMapWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
+
 void UGoogleMapWidget::CreateGoogleMap(FVector2D Position, FVector2D Size)
 {
 #if PLATFORM_ANDROID
@@ -57,6 +83,25 @@ void UGoogleMapWidget::RemoveGoogleMap()
 #endif
 }
 
+void UGoogleMapWidget::UpdateSplit(float overDistance)
+{
+	float d = 0;
+	int i = GPSPoints.Num() - 1;
+	while (d < overDistance)
+	{
+		d += getDistanceFromLatLonInKm(GPSPoints[i].Latitude, GPSPoints[i].Longitude,
+			GPSPoints[i-1].Latitude, GPSPoints[i - 1].Longitude);
+		i--;
+		
+		if (i == 0) { // Distance isn't overDistance yet
+			Split = FTimespan(0);
+			return;
+		}
+	}
+	Split = (GPSPoints.Last(0).Time - GPSPoints.Last(i).Time) * (1/d);
+
+}
+
 void UGoogleMapWidget::ConnectToGoogleAPI()
 {
 #if PLATFORM_ANDROID
@@ -75,11 +120,9 @@ void UGoogleMapWidget::DisconnectFromGoogleAPI()
 
 // **** GoogleMaps native functions **** //
 #if PLATFORM_ANDROID
-extern "C" void Java_com_epicgames_ue4_GameActivity_nativeLocationChanged(JNIEnv* jenv, jobject thiz, jdouble lat, jdouble lng)
+extern "C" void Java_com_jeevcatgames_UEMapDialog_nativeLocationChanged(JNIEnv* jenv, jobject thiz, jdouble lat, jdouble lng)
 {
 	UE_LOG(LogGoogleMaps, Log, TEXT("nativeLocationChanged lat=%.4f and lng=%.4f"), lat, lng);
-	// Send location to BP
-	AttachedWidget->OnLocationChanged((float)lat, (float)lng);
+	AttachedWidget->LocationChanged(lat, lng);
 }
 #endif
-
