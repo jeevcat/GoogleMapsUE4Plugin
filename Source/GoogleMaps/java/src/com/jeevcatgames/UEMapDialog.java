@@ -44,8 +44,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import com.jeevcatgames.GPSService;
-
 import java.util.List;
 
 
@@ -74,6 +72,8 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
     private Location lastLocation;
     private Polyline mapPolyline;
     private Intent serviceIntent;
+    private IGPSService gpsService;
+    private GPSService boundService;
 
 
     // Constructor
@@ -127,6 +127,27 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
 
         serviceIntent = new Intent(parentActivity, GPSService.class);
     }
+
+    private ServiceConnection connection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            // This is called when the connection with the service has been
+            // established, giving us the service object we can use to
+            // interact with the service.  Because we have bound to a explicit
+            // service that we know is running in our own process, we can
+            // cast its IBinder to a concrete class and directly access it.
+            gpsService = IGPSService.Stub.asInterface(service);
+
+            // Tell the user about this for our demo.
+            Toast.makeText(parentActivity, "Service has been bound to",
+                    Toast.LENGTH_SHORT).show();
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            // Called when the connection with the service disconnects unexpectedly
+            gpsService = null;
+            Log.e(TAG, "Service has unexpectedly disconnected");
+        }
+    };
 
 /**
  * Overrides
@@ -266,6 +287,24 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
         });
     }
 
+    void doBindService() {
+        // Establish a connection with the service.  We use an explicit
+        // class name because we want a specific service implementation that
+        // we know will be running in our own process (and thus won't be
+        // supporting component replacement by other applications).
+        parentActivity.bindService(new Intent(parentActivity,
+                GPSService.class), connection, Context.BIND_AUTO_CREATE);
+        isBound = true;
+    }
+
+    void doUnbindService() {
+        if (isBound) {
+            // Detach our existing connection.
+            parentActivity.unbindService(connection);
+            isBound = false;
+        }
+    }
+
     /**
      * Functions called from native code
      */
@@ -304,6 +343,7 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
     public void ConnectGoogleAPI() {
         apiClient.connect();
         parentActivity.startService(serviceIntent);
+        doBindService();
         Log.i(TAG, "Starting service");
     }
 
@@ -321,5 +361,6 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
                 });
             }
         parentActivity.stopService(serviceIntent);
+        doUnbindService();
     }
 }

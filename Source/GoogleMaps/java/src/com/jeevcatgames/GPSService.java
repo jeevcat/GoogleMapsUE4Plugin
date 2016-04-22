@@ -5,9 +5,12 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
+
+import com.jeevcatgames.IGPSService;
 
 import com.epicgames.ue4.GameActivity;
 
@@ -28,9 +31,21 @@ public class GPSService extends Service
     // Unique Identification Number for the Notification.
     // We use it on Notification start, and to cancel it.
     private int NOTIFICATION = 1234;
+    // This is the object that receives interactions from clients.  See
+    // RemoteService for a more complete example.
 
+    private final IGPSService.Stub binder = new IGPSService.Stub() {
+        public int getPid(){
+            return 2345;
+        }
+        public void basicTypes(int anInt, long aLong, boolean aBoolean,
+                               float aFloat, double aDouble, String aString) {
+            // Does nothing
+        }
+    };
     @Override
     public void onCreate() {
+        super.onCreate();
         mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
 
         // Display a notification about us starting.  We put an icon in the status bar.
@@ -56,8 +71,7 @@ public class GPSService extends Service
 
     @Override
     public IBinder onBind(Intent intent) {
-        // We don't provide binding, so return null
-        return null;
+        return binder;
     }
     /**
      * Show a notification while this service is running.
@@ -70,7 +84,7 @@ public class GPSService extends Service
         Intent intent =  new Intent(getApplicationContext(), GameActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
-        PendingIntent contentIntent = PendingIntent.getActivity(getApplicationContext(), NOTIFICATION,
+        PendingIntent contentIntent = PendingIntent.getActivity(this, NOTIFICATION,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         // Set the info for the views that show in the notification panel.
