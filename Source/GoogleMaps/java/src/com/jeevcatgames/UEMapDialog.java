@@ -1,14 +1,19 @@
-// Custom Dialog which holds a MapFragment for use in UnrealEngine
-// Copyright 2016, Sam Jeeves. All rights reserved.
-
 package com.jeevcatgames;
 
+/**
+ * Custom Dialog which holds a MapFragment for use in UnrealEngine
+ * Copyright 2016, Sam Jeeves. All rights reserved.
+ */
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentSender;
+import android.content.ServiceConnection;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -16,6 +21,7 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -38,6 +44,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import com.jeevcatgames.GPSService;
+
 import java.util.List;
 
 
@@ -47,9 +55,28 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
 
     @SuppressWarnings("JniMissingFunction")
     public native void nativeLocationChanged(double lat, double lng);
+    @SuppressWarnings("JniMissingFunction")
+    public native void nativeResumeTracking();
 
     public boolean isShown;
 
+    private static final String TAG = "UEMapDialog";
+    private static final int REQUEST_CHECK_SETTINGS = 0x1;
+
+    private Activity parentActivity;
+    private int layoutId, mapContainerId;
+    private boolean followUser, isBound;
+    private LayoutInflater inflater;
+    private MapFragment mapFragment;
+    private GoogleMap googleMap;
+    private GoogleApiClient apiClient;
+    private LocationRequest locationRequest;
+    private Location lastLocation;
+    private Polyline mapPolyline;
+    private Intent serviceIntent;
+
+
+    // Constructor
     public UEMapDialog(final Context context) {
         super(context, android.R.style.Theme_Panel);
         parentActivity = (Activity) context;
@@ -68,6 +95,7 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
 
         FrameLayout frame = (FrameLayout) inflater.inflate(layoutId, null, false);
         setContentView(frame);
+        setCancelable(false);
 
         // Create MapFragment
         mapFragment = (MapFragment) parentActivity.getFragmentManager()
@@ -96,22 +124,13 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
             .addOnConnectionFailedListener(this)
             .addApi(LocationServices.API)
             .build();
+
+        serviceIntent = new Intent(parentActivity, GPSService.class);
     }
 
-    private static final String TAG = "UEMapDialog";
-    private static final int REQUEST_CHECK_SETTINGS = 0x1;
-
-    private Activity parentActivity;
-    private int layoutId, mapContainerId;
-    private boolean followUser;
-    private LayoutInflater inflater;
-    private MapFragment mapFragment;
-    private GoogleMap googleMap;
-    private GoogleApiClient apiClient;
-    private LocationRequest locationRequest;
-    private Location lastLocation;
-    private Polyline mapPolyline;
-
+/**
+ * Overrides
+ */
 
     @Override
     public void onConnected(Bundle bundle) {
@@ -174,6 +193,7 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.i(TAG, "GPS Accuracy: " + location.getAccuracy());
         if(location.getAccuracy() < 100.0f) {
             lastLocation = location;
             final LatLng newPoint = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
@@ -190,7 +210,7 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
             });
             nativeLocationChanged(location.getLatitude(), location.getLongitude());
         } else {
-            Log.i(TAG, "Low accuracy location (<100m). Requesting single fresh location");
+            Log.i(TAG, "Low accuracy location (>100m). Requesting single fresh location");
             // Ask for single fresh location
             LocationRequest singleLR = new LocationRequest()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
@@ -204,7 +224,7 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
     @Override
     public void onGlobalLayout() {
         Log.i(TAG, "In OnResume OnGlobalLayoutListener");
-        findViewById(android.R.id.content).getViewTreeObserver().removeOnGlobalLayoutListener(this);
+        parentActivity.findViewById(android.R.id.content).getViewTreeObserver().removeOnGlobalLayoutListener(this);
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -214,9 +234,16 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
     }
 
     public void OnResume() {
+        Bundle bundle = parentActivity.getIntent().getExtras();
+        for (String key : bundle.keySet()) {
+            Object value = bundle.get(key);
+            Log.d(TAG, String.format("%s %s (%s)", key,
+                    value.toString(), value.getClass().getName()));
+        }
+
         if (isShown) {
             Log.i(TAG, "Reshowing MapDialog");
-            ViewTreeObserver vto = findViewById(android.R.id.content).getViewTreeObserver();
+            ViewTreeObserver vto = parentActivity.findViewById(android.R.id.content).getViewTreeObserver();
             vto.addOnGlobalLayoutListener(this);
         }
     }
@@ -238,6 +265,10 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
             }
         });
     }
+
+    /**
+     * Functions called from native code
+     */
 
     public void CreateGoogleMap(int posX, int posY, int sizeX, int sizeY) {
         // Move map
@@ -272,6 +303,8 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
 
     public void ConnectGoogleAPI() {
         apiClient.connect();
+        parentActivity.startService(serviceIntent);
+        Log.i(TAG, "Starting service");
     }
 
     public void DisconnectGoogleAPI() {
@@ -287,5 +320,6 @@ public class UEMapDialog extends Dialog implements ConnectionCallbacks,
                     }
                 });
             }
+        parentActivity.stopService(serviceIntent);
     }
 }

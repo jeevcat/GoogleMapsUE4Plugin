@@ -4,5 +4,3 @@
 #if PLATFORM_ANDROID
 void CallVoidMethodWithExceptionCheck(jmethodID Method, ...);
 #endif
-
-float getDistanceFromLatLonInKm(float lat1, float lon1, float lat2, float lon2);

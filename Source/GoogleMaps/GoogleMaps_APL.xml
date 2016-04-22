@@ -9,6 +9,11 @@
 					android:value="AIzaSyAIahxW93kRq42j2hnpK_5HBDXv4oufb8w"/>-->
 			<meta-data android:name="com.google.android.geo.API_KEY"
 					android:value="AIzaSyChN7lO4AdIZQR1hIItdThFjbqEjCwqT00"/>     
+
+			<service
+	            android:name="com.jeevcatgames.GPSService"
+	            android:exported="false"
+	            android:process=":remote"/>
 		</addElements>
 
 		<addElements tag="manifest">
@@ -43,17 +48,24 @@
 	<gameActivityImportAdditions>
 		<insert>
 			import android.os.Bundle;
+			import android.app.ActivityManager;
 			
 			import com.jeevcatgames.UEMapDialog;
+			import com.jeevcatgames.GPSService;
 		</insert>
 	</gameActivityImportAdditions>
+	<gameActivityOnStartAdditions>
+		<insert>
+
+		</insert>
+	</gameActivityOnStartAdditions>
 	<gameActivityOnCreateAdditions>
 		<insert>
 			Log.debug("new UEMapDialog");
 			mMapDialog = new UEMapDialog(_activity);
 		</insert>
 	</gameActivityOnCreateAdditions>
-	
+		if(isServiceRunning()
 	<gameActivityClassAdditions>
 		<insert>
     		private static final int REQUEST_CHECK_SETTINGS = 0x1;
@@ -87,7 +99,18 @@
 		        mMapDialog.DisconnectGoogleAPI();
 		    }
 
+		    private boolean isServiceRunning(Class&lt;?&gt; serviceClass) {
+			    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+			    for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+			        if (serviceClass.getName().equals(service.service.getClassName())) {
+			            return true;
+			        }
+			    }
+			    return false;
+			}
+
 		//public native void nativeLocationChanged(double lat, double lng);
+			public native void nativeResumeTracking();
 		</insert>
 	</gameActivityClassAdditions>
 
@@ -114,6 +137,10 @@
 	<gameActivityOnResumeAdditions>
 		<insert>
 			mMapDialog.OnResume();
+			if(isServiceRunning(GPSService.class)) {
+				Log.debug("Service running! Should move to different screen");
+				nativeResumeTracking();
+			}
 		</insert>
 	</gameActivityOnResumeAdditions>
 </root>

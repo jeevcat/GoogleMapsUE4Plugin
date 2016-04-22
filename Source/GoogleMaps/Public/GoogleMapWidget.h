@@ -3,7 +3,6 @@
 #pragma once
 
 #include "Blueprint/UserWidget.h"
-#include "TimerManager.h"
 #include "Misc/DateTime.h"
 #include "GoogleMapWidget.generated.h"
 
@@ -46,7 +45,6 @@ class UGoogleMapWidget : public UUserWidget
 private:
 	void CreateGoogleMap(FVector2D Position, FVector2D Size);
 	void RemoveGoogleMap();
-	void UpdateSplit(float overDistance);
 
 	bool initialised;
 	
@@ -54,41 +52,7 @@ public:
 	// Constructor declaration
 	UGoogleMapWidget(const FObjectInitializer& ObjectInitializer);
 
-	void LocationChanged(float lat, float lng);
-
-	/** Has the Google API successfully established a GPS connection? */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-	bool GPSConnected;
-
-	/** GPS data points */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-	TArray<FLocationStruct> GPSPoints;
-
-	/** Total distance in km */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-		float TotalDistance;
-
-	/** Time taken to run last 1 km */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-	FTimespan Split;
-
-	/** Time when running began */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-	FDateTime StartTime;
-
-
-
+	// Overrides
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeDestruct() override;
-	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
-		void ConnectToGoogleAPI();
-
-	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
-		void DisconnectFromGoogleAPI();
-
-	/** New GPS location has been received */
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Location Changed"))
-		void OnLocationChanged(float Latitude, float Longitude);
-	
-	
 };
