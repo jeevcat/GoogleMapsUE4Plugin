@@ -14,6 +14,7 @@
 	            android:name="com.jeevcatgames.GPSService"
 	            android:exported="false"
 	            android:process=":remote"/>
+
 		</addElements>
 
 		<addElements tag="manifest">
@@ -56,47 +57,54 @@
 	</gameActivityImportAdditions>
 	<gameActivityOnStartAdditions>
 		<insert>
-
+			startedWithServiceRunning = isServiceRunning(GPSService.class);
+			if(startedWithServiceRunning)
+				nativeResumeTracking();
 		</insert>
 	</gameActivityOnStartAdditions>
 	<gameActivityOnCreateAdditions>
 		<insert>
-			Log.debug("new UEMapDialog");
-			mMapDialog = new UEMapDialog(_activity);
+			serviceIntent = new Intent(_activity, GPSService.class);
 		</insert>
 	</gameActivityOnCreateAdditions>
-		if(isServiceRunning()
 	<gameActivityClassAdditions>
 		<insert>
     		private static final int REQUEST_CHECK_SETTINGS = 0x1;
 			private UEMapDialog mMapDialog;
+			private Intent serviceIntent;
+			private boolean startedWithServiceRunning;
 
-			public void AndroidThunkJava_CreateGoogleMap(float posX, float posY, float sizeX, float sizeY, float renderX) {
-		        Log.debug("In AndroidThunkJava_CreateGoogleMap");
-		        DisplayMetrics dm = getResources().getDisplayMetrics();
-		        float scale = dm.widthPixels / renderX;
+			public void AndroidThunkJava_CreateGoogleMap(final float posX, final float posY, 
+				final float sizeX, final float sizeY, float renderX) {
+			        Log.debug("In AndroidThunkJava_CreateGoogleMap");
+			        DisplayMetrics dm = getResources().getDisplayMetrics();
+			        final float scale = dm.widthPixels / renderX;
 
-		        mMapDialog.CreateGoogleMap(
-		        	(int)(posX * scale), 
-		        	(int) (posY * scale), 
-		        	(int) (sizeX * scale), 
-		        	(int) (sizeY * scale));
-
+			        Log.debug("new UEMapDialog");
+			        _activity.runOnUiThread(new Runnable() {
+					    public void run() {
+					        mMapDialog = new UEMapDialog(_activity, startedWithServiceRunning,
+					        	(int)(posX * scale), (int) (posY * scale), 
+					        	(int) (sizeX * scale), (int) (sizeY * scale));
+					        mMapDialog.show();
+					    }
+					});
 		    }
 
 		    public void AndroidThunkJava_RemoveGoogleMap() {
 		        Log.debug("In AndroidThunkJava_RemoveGoogleMap");
-		        mMapDialog.RemoveGoogleMap();
+		        mMapDialog.dismiss();
+		        mMapDialog = null;
 		    }
 
 		    public void AndroidThunkJava_ConnectGoogleAPI() {
 		        Log.debug("In AndroidThunkJava_ConnectGoogleAPI");
-		        mMapDialog.ConnectGoogleAPI();
+		        startService(serviceIntent);
 		    }
 
 		    public void AndroidThunkJava_DisconnectGoogleAPI() {
 		        Log.debug("In AndroidThunkJava_DisconnectGoogleAPI");
-		        mMapDialog.DisconnectGoogleAPI();
+		       	stopService(serviceIntent);
 		    }
 
 		    private boolean isServiceRunning(Class&lt;?&gt; serviceClass) {
@@ -111,6 +119,7 @@
 
 		//public native void nativeLocationChanged(double lat, double lng);
 			public native void nativeResumeTracking();
+			
 		</insert>
 	</gameActivityClassAdditions>
 
@@ -120,7 +129,7 @@
 				switch (resultCode) {
                     case RESULT_OK:
                         Log.debug("User agreed to make required location settings changes.");
-                        mMapDialog.startLocationUpdates();
+                        mMapDialog.StartLocationUpdates();
                         break;
                     case RESULT_CANCELED:
                         Log.debug("User chose not to make required location settings changes.");
@@ -131,16 +140,14 @@
 	</gameActivityOnActivityResultAdditions>
 	<gameActivityOnPauseAdditions>
 		<insert>
-			mMapDialog.hide();
+			if (mMapDialog !=null)
+				mMapDialog.hide();
 		</insert>
 	</gameActivityOnPauseAdditions>
 	<gameActivityOnResumeAdditions>
 		<insert>
-			mMapDialog.OnResume();
-			if(isServiceRunning(GPSService.class)) {
-				Log.debug("Service running! Should move to different screen");
-				nativeResumeTracking();
-			}
+			if (mMapDialog != null) 
+				mMapDialog.OnResume();
 		</insert>
 	</gameActivityOnResumeAdditions>
 </root>
