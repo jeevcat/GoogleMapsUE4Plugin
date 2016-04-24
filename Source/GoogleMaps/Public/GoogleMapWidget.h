@@ -26,10 +26,10 @@ struct FLocationStruct
 		Time(0)
 	{}
 
-	FLocationStruct(float lat, float lng)
+	FLocationStruct(float lat, float lng, FDateTime time)
 		: Latitude(lat),
 		Longitude(lng),
-		Time(FDateTime::Now())
+		Time(time)
 	{}
 };
 

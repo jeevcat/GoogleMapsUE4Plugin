@@ -53,7 +53,7 @@ public:
 	/** Called when the game starts. */
 	virtual void BeginPlay() override;
 
-	void LocationChanged(float lat, float lng);
+	void LocationChanged(float lat, float lng, int64 time);
 
 
 protected:

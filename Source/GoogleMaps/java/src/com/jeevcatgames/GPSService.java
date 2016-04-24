@@ -28,6 +28,7 @@ import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.model.LatLng;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 
@@ -48,7 +49,7 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
     private GoogleApiClient apiClient;
     private LocationRequest locationRequest;
     private BroadcastReceiver receiver;
-    private ArrayList<Location> allLocations;
+    private ArrayList<LatLngTime> allPoints;
 
     private static final String TAG = "GPSService";
     private static final int LOCATION_INTERVAL = 5000;
@@ -66,7 +67,7 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
         showNotification();
 
         // Array of all lat, lng and times
-        allLocations = new ArrayList<Location>();
+        allPoints = new ArrayList<LatLngTime>();
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CONNECT_TO_GOOGLE_API);
@@ -218,11 +219,11 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
         Log.i(TAG,"GAME IS ALIVE: "+gameIsAlive);
 
         if (loc.getAccuracy() < 100.0f) {
-            allLocations.add(loc);
-            LatLng newPoint = new LatLng(loc.getLatitude(), loc.getLongitude());
+            LatLngTime newPoint = new LatLngTime(loc);
+            allPoints.add(newPoint);
             if(gameIsAlive) {
                 Intent intent = new Intent(UEMapDialog.UPDATE_MAP);
-                intent.putExtra("LatLng", newPoint);
+                intent.putExtra("LatLngTime", newPoint);
                 sendBroadcast(intent);
                 gameIsAlive = false;
             }
@@ -243,7 +244,7 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
     }
 
     private void StartTracking() {
-        allLocations.add(LocationServices.FusedLocationApi.getLastLocation(apiClient));
+        allPoints.add(new LatLngTime(LocationServices.FusedLocationApi.getLastLocation(apiClient)));
         LocationServices.FusedLocationApi.requestLocationUpdates(apiClient,
                 locationRequest, this);
 
@@ -251,10 +252,8 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
 
     private void RequestAllPoints() {
         gameIsAlive = true;
-        ArrayList<LatLng> points = new ArrayList<LatLng>();
-        for (Location l : allLocations) {
-            points.add(new LatLng(l.getLatitude(), l.getLongitude()));
-        }
+        ArrayList<LatLngTime> points = new ArrayList<LatLngTime>();
+
         Intent intent = new Intent(UEMapDialog.RECEIVE_ALL_POINTS);
         intent.putExtra("Points", points);
         sendBroadcast(intent);
@@ -263,5 +262,27 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
     @Override
     public void onConnectionFailed(ConnectionResult result) {
         Log.i(TAG, "Google API connection failed: Has resolution? " + result.hasResolution());
+    }
+
+    static class LatLngTime implements Serializable {
+        public double Latitude;
+        public double Longitude;
+        public long UTCTime;
+
+        public LatLngTime(double latitude, double longitude, long utcTime) {
+            Latitude = latitude;
+            Longitude = longitude;
+            UTCTime = utcTime;
+        }
+
+        public LatLngTime(Location location) {
+            Latitude = location.getLatitude();
+            Longitude = location.getLongitude();
+            UTCTime = location.getTime();
+        }
+
+        public LatLng toLatLng() {
+            return new LatLng(Latitude, Longitude);
+        }
     }
 }

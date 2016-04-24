@@ -58,8 +58,11 @@
 	<gameActivityOnStartAdditions>
 		<insert>
 			startedWithServiceRunning = isServiceRunning(GPSService.class);
-			if(startedWithServiceRunning)
+			if(startedWithServiceRunning) {
 				nativeResumeTracking();
+				Log.debug("nativeResumeTracking");
+			}
+
 		</insert>
 	</gameActivityOnStartAdditions>
 	<gameActivityOnCreateAdditions>

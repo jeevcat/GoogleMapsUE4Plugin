@@ -56,14 +56,17 @@ void AGoogleMapsGameMode::DisconnectFromGoogleAPI()
 
 //Privates
 
-void AGoogleMapsGameMode::LocationChanged(float lat, float lng)
-{	//First time this is run
+void AGoogleMapsGameMode::LocationChanged(float lat, float lng, int64 time)
+{	
+	FDateTime dateTime = FDateTime::FromUnixTimestamp(time/1000);
+	//First time this is run
 	if (!GPSConnected) {
 		GPSConnected = true;
-		StartTime = FDateTime::Now();
+		StartTime = dateTime;
+		UE_LOG(LogGoogleMaps, Log, TEXT("Start time! %s, %d"), *dateTime.ToString(), time);
 	}
 
-	GPSPoints.Emplace(lat, lng);
+	GPSPoints.Emplace(lat, lng, dateTime);
 
 	if (GPSPoints.Num() > 1) {
 		UpdateSplit(0.2f);
@@ -87,10 +90,26 @@ float AGoogleMapsGameMode::getDistanceFromLatLonInKm(float lat1, float lon1, flo
 
 // **** GoogleMaps native functions **** //
 #if PLATFORM_ANDROID
-extern "C" void Java_com_jeevcatgames_UEMapDialog_nativeLocationChanged(JNIEnv* jenv, jobject thiz, jdouble lat, jdouble lng)
+extern "C" void Java_com_jeevcatgames_UEMapDialog_nativeLocationChanged(JNIEnv* jenv, jobject thiz, jdouble lat, jdouble lng, jlong time)
 {
-	UE_LOG(LogGoogleMaps, Log, TEXT("nativeLocationChanged lat=%.4f and lng=%.4f"), lat, lng);
-	GoogleMapsGameMode_c->LocationChanged(lat, lng);
+	UE_LOG(LogGoogleMaps, Log, TEXT("nativeLocationChanged lat=%.4f, lng=%.4f, time:%d"), lat, lng, time);
+	GoogleMapsGameMode_c->LocationChanged(lat, lng, time);
+}
+
+extern "C" void Java_com_jeevcatgames_UEMapDialog_nativeAllPoints(JNIEnv* jenv, jobject thiz,
+	jdoubleArray latArray, jdoubleArray lngArray, jlongArray timeArray)
+{
+	UE_LOG(LogGoogleMaps, Log, TEXT("nativeAllPoints"));
+
+	int pointCount = jenv->GetArrayLength(latArray);
+	jdouble* lat = jenv->GetDoubleArrayElements(latArray, 0);
+	jdouble* lng = jenv->GetDoubleArrayElements(lngArray, 0);
+	jlong* time = jenv->GetLongArrayElements(timeArray, 0);
+	for (int i = 0; i < pointCount; i++) {
+		GoogleMapsGameMode_c->GPSPoints.Emplace(lat[i], lng[i], FDateTime::FromUnixTimestamp(time[i] / 1000));
+	}
+	// Update with last result
+	GoogleMapsGameMode_c->LocationChanged(lat[pointCount - 1], lng[pointCount - 1], time[pointCount - 1]);
 }
 
 extern "C" void Java_com_epicgames_ue4_GameActivity_nativeResumeTracking(JNIEnv* jenv, jobject thiz)

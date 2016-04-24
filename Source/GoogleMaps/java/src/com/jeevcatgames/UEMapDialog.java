@@ -15,8 +15,6 @@ import android.content.IntentSender;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.InflateException;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -38,6 +36,11 @@ import java.util.List;
 
 public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayoutListener, OnMapReadyCallback {
 
+    @SuppressWarnings("JniMissingFunction")
+    public native void nativeLocationChanged(double lat, double lng, long time);
+    @SuppressWarnings("JniMissingFunction")
+    public native void nativeAllPoints(double[] latArray, double[] lngArray, long[] timeArray);
+
     public static final String USER_REQUEST_GPS_SETTING = "com.jeevcatgames.UEMapDialog.USER_REQUEST_GPS_SETTING";
     public static final String START_LOCATION_UPDATES = "com.jeevcatgames.UEMapDialog.START_LOCATION_UPDATES";
     public static final String UPDATE_MAP = "com.jeevcatgames.UEMapDialog.UPDATE_MAP";
@@ -49,7 +52,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     private View frame;
     private int layoutId, mapContainerId;
     private boolean followUser, serviceAlreadyRunning;
-    private LayoutInflater inflater;
     private MapFragment mapFragment;
     private GoogleMap googleMap;
     private Polyline mapPolyline;
@@ -68,9 +70,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         this.sizeY = sY;
         this.serviceAlreadyRunning = serviceAlreadyRunning;
     }
-
-    @SuppressWarnings("JniMissingFunction")
-    public native void nativeLocationChanged(double lat, double lng);
 
     /**
      * Overrides
@@ -122,9 +121,9 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
                 if (intent.getAction().equals(START_LOCATION_UPDATES))
                     StartLocationUpdates();
                 if (intent.getAction().equals(UPDATE_MAP))
-                    UpdateMap((LatLng) intent.getParcelableExtra("LatLng"));
+                    UpdateMap((GPSService.LatLngTime) intent.getSerializableExtra("LatLngTime"));
                 if (intent.getAction().equals(RECEIVE_ALL_POINTS))
-                    ReceiveAllPoints((ArrayList<LatLng>) intent.getSerializableExtra("Points"));
+                    ReceiveAllPoints((ArrayList<GPSService.LatLngTime>) intent.getSerializableExtra("Points"));
             }
         };
 
@@ -212,28 +211,44 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         }
     }
 
-    private void UpdateMap(final LatLng point) {
+    private void UpdateMap(final GPSService.LatLngTime point) {
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 if (followUser) {
-                    googleMap.animateCamera(CameraUpdateFactory.newLatLng(point));
+                    googleMap.animateCamera(CameraUpdateFactory.newLatLng(point.toLatLng()));
                 }
                 List<LatLng> points = mapPolyline.getPoints();
-                points.add(point);
+                points.add(point.toLatLng());
                 mapPolyline.setPoints(points);
             }
         });
-        nativeLocationChanged(point.latitude, point.longitude);
 
         Intent intent = new Intent(GPSService.LOCATION_RECIEVED);
         parentActivity.sendBroadcast(intent);
+
+        Log.i(TAG, "nativeLocationChanged "+point.Latitude+", "+ point.Longitude+", "+point.UTCTime );
+        nativeLocationChanged(point.Latitude, point.Longitude, point.UTCTime);
     }
 
-    private void ReceiveAllPoints(ArrayList<LatLng> points) {
-        for (LatLng p : points) {
-            mapPolyline.setPoints(points);
+    private void ReceiveAllPoints(ArrayList<GPSService.LatLngTime> points) {
+        ArrayList<LatLng> polyPoints = new ArrayList<LatLng>();
+
+        int size = points.size();
+        double[] latArray = new double[size];
+        double[] lngArray = new double[size];
+        long[] timeArray = new long[size];
+        for(int i=0; i<size; i++){
+            latArray[i] = points.get(i).Latitude;
+            lngArray[i] = points.get(i).Longitude;
+            timeArray[i] = points.get(i).UTCTime;
+
+            polyPoints.add(points.get(i).toLatLng());
         }
+        mapPolyline.setPoints(polyPoints);
+
+        Log.i(TAG, "nativeAllPoints");
+        nativeAllPoints(latArray, lngArray, timeArray);
     }
 
 }
