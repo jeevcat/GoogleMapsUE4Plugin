@@ -112,10 +112,13 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         intentFilter.addAction(USER_REQUEST_GPS_SETTING);
         intentFilter.addAction(START_LOCATION_UPDATES);
         intentFilter.addAction(UPDATE_MAP);
+        intentFilter.addAction(RECEIVE_ALL_POINTS);
+
 
         receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
+                Log.i(TAG, "BroadcastReceiver received: " + intent.getAction());
                 if (intent.getAction().equals(USER_REQUEST_GPS_SETTING))
                     RequestGPSEnabled((Status) intent.getParcelableExtra("Status"));
                 if (intent.getAction().equals(START_LOCATION_UPDATES))
@@ -129,10 +132,10 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
 
         parentActivity.registerReceiver(receiver, intentFilter);
 
-        Log.i(TAG, "ServiceAlreadyRunning: " + serviceAlreadyRunning);
         if(serviceAlreadyRunning) {
             Intent intent = new Intent(GPSService.REQUEST_ALL_POINTS);
             parentActivity.sendBroadcast(intent);
+            Log.i(TAG, "Service already running. Requesting all points.");
         } else {
             Intent intent = new Intent(GPSService.CONNECT_TO_GOOGLE_API);
             parentActivity.sendBroadcast(intent);
@@ -199,7 +202,7 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     }
 
     private void RequestGPSEnabled(Status status) {
-        Log.i(TAG, "Got intent!! Displaying GPS settings request");
+        Log.i(TAG, "Displaying GPS settings request");
         try {
             // Show the dialog by calling startResolutionForResult(),
             // and check the result in onActivityResult().
@@ -227,11 +230,11 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         Intent intent = new Intent(GPSService.LOCATION_RECIEVED);
         parentActivity.sendBroadcast(intent);
 
-        Log.i(TAG, "nativeLocationChanged "+point.Latitude+", "+ point.Longitude+", "+point.UTCTime );
         nativeLocationChanged(point.Latitude, point.Longitude, point.UTCTime);
     }
 
     private void ReceiveAllPoints(ArrayList<GPSService.LatLngTime> points) {
+        Log.i(TAG, "Receiving all points.");
         ArrayList<LatLng> polyPoints = new ArrayList<LatLng>();
 
         int size = points.size();
@@ -247,7 +250,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         }
         mapPolyline.setPoints(polyPoints);
 
-        Log.i(TAG, "nativeAllPoints");
         nativeAllPoints(latArray, lngArray, timeArray);
     }
 

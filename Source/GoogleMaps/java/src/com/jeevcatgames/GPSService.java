@@ -216,12 +216,11 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
 
     @Override
     public void onLocationChanged(Location loc) {
-        Log.i(TAG,"GAME IS ALIVE: "+gameIsAlive);
-
         if (loc.getAccuracy() < 100.0f) {
             LatLngTime newPoint = new LatLngTime(loc);
             allPoints.add(newPoint);
             if(gameIsAlive) {
+                Log.i(TAG, "Game is alive. Sending point.");
                 Intent intent = new Intent(UEMapDialog.UPDATE_MAP);
                 intent.putExtra("LatLngTime", newPoint);
                 sendBroadcast(intent);
@@ -230,12 +229,12 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
         } else {
             Log.i(TAG, "Low accuracy location (>100m). Requesting single fresh location");
             // Ask for single fresh location
-            LocationRequest singleLR = new LocationRequest()
-                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                    .setNumUpdates(1)
-                    .setExpirationDuration(1000);
-            LocationServices.FusedLocationApi.requestLocationUpdates(apiClient,
-                    singleLR, this);
+//            LocationRequest singleLR = new LocationRequest()
+//                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+//                    .setNumUpdates(1)
+//                    .setExpirationDuration(1000);
+//            LocationServices.FusedLocationApi.requestLocationUpdates(apiClient,
+//                    singleLR, this);
         }
     }
 
@@ -251,11 +250,12 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
     }
 
     private void RequestAllPoints() {
+        Log.i(TAG, "All points requested. Sending entire array.");
         gameIsAlive = true;
-        ArrayList<LatLngTime> points = new ArrayList<LatLngTime>();
 
         Intent intent = new Intent(UEMapDialog.RECEIVE_ALL_POINTS);
-        intent.putExtra("Points", points);
+        intent.putExtra("Points", allPoints);
+        Log.i(TAG, "Extra: " + intent.getSerializableExtra("Points"));
         sendBroadcast(intent);
     }
 

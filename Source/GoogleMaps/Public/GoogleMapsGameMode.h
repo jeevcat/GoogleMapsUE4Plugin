@@ -32,10 +32,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
 	FTimespan Split;
 
-	/** Time when running began */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-	FDateTime StartTime;
-
 	/** Game was killed and is restarting */
 	UFUNCTION(BlueprintPure, Category = "Utilities|Google Maps")
 	bool ShouldResumeTracking() const;

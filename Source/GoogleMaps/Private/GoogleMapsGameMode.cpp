@@ -62,8 +62,6 @@ void AGoogleMapsGameMode::LocationChanged(float lat, float lng, int64 time)
 	//First time this is run
 	if (!GPSConnected) {
 		GPSConnected = true;
-		StartTime = dateTime;
-		UE_LOG(LogGoogleMaps, Log, TEXT("Start time! %s, %d"), *dateTime.ToString(), time);
 	}
 
 	GPSPoints.Emplace(lat, lng, dateTime);
