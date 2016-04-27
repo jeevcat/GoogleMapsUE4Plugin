@@ -15,14 +15,27 @@ class GOOGLEMAPS_API AGoogleMapsGameMode : public AGameMode
 {
 	GENERATED_BODY()
 	
+	void UpdateTotalDistance();
+	float getDistanceFromLatLonInKm(float lat1, float lon1, float lat2, float lon2);
+
 public:
+	AGoogleMapsGameMode();
+
 	/** Has the Google API successfully established a GPS connection? */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
 	bool GPSConnected;
 
+	/** Distance over which to calculate the split in km*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Google Maps")
+	float SplitOverDistance;
+
 	/** GPS data points */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
 	TArray<FLocationStruct> GPSPoints;
+
+	/** Tracking start time (UTC) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
+	FDateTime startTime;
 
 	/** Total distance in km */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
@@ -33,14 +46,17 @@ public:
 	FTimespan Split;
 
 	/** Game was killed and is restarting */
-	UFUNCTION(BlueprintPure, Category = "Utilities|Google Maps")
-	bool ShouldResumeTracking() const;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
+	bool ShouldResumeTracking;
 
 	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
-	void ConnectToGoogleAPI();
+	void RunGPSService();
 
 	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
-	void DisconnectFromGoogleAPI();
+	void StartTracking();
+
+	UFUNCTION(BlueprintCallable, Category = "Utilities|Google Maps")
+	void KillGPSService();
 
 	/** New GPS location has been received */
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Location Changed"))
@@ -50,14 +66,11 @@ public:
 	virtual void BeginPlay() override;
 
 	void LocationChanged(float lat, float lng, int64 time);
-
+	void UpdateSplit();
+	void RecalculateTotalDistance();
 
 protected:
 	/** Placeholder for the GoogleMapWidget when it is present in the game */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Google Maps")
 	UGoogleMapWidget* GoogleMapWidget;
-
-private:
-	void UpdateSplit(float overDistance);
-	float getDistanceFromLatLonInKm(float lat1, float lon1, float lat2, float lon2);
 };

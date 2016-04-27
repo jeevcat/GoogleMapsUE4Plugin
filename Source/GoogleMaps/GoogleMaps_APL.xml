@@ -100,15 +100,24 @@
 		        mMapDialog = null;
 		    }
 
-		    public void AndroidThunkJava_ConnectGoogleAPI() {
-		        Log.debug("In AndroidThunkJava_ConnectGoogleAPI");
+		    public void AndroidThunkJava_RunGPSService() {
+		        Log.debug("In AndroidThunkJava_RunGPSService");
 		        startService(serviceIntent);
 		    }
 
-		    public void AndroidThunkJava_DisconnectGoogleAPI() {
-		        Log.debug("In AndroidThunkJava_DisconnectGoogleAPI");
+		    public void AndroidThunkJava_KillGPSService() {
+		        Log.debug("In AndroidThunkJava_KillGPSService");
 		       	stopService(serviceIntent);
 		    }
+
+		    public void AndroidThunkJava_StartTracking() {
+		    	Log.debug("In AndroidThunkJava_StartTracking");
+		    	if(isServiceRunning(GPSService.class))
+		    	{
+    				sendBroadcast(new Intent(GPSService.START_TRACKING));
+		    	}
+		    }
+
 
 		    private boolean isServiceRunning(Class&lt;?&gt; serviceClass) {
 			    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
@@ -132,7 +141,8 @@
 				switch (resultCode) {
                     case RESULT_OK:
                         Log.debug("User agreed to make required location settings changes.");
-                        mMapDialog.StartLocationUpdates();
+                        Intent intent = new Intent(GPSService.SETUP_TRACKING);
+        				sendBroadcast(intent);
                         break;
                     case RESULT_CANCELED:
                         Log.debug("User chose not to make required location settings changes.");

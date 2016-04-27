@@ -6,50 +6,80 @@
 #include "GenericPlatform/GenericPlatformMath.h"
 
 static AGoogleMapsGameMode* GoogleMapsGameMode_c = NULL;
-static bool shouldResumeTracking = false;
+static bool shouldResumeTracking_static = false;
+
+AGoogleMapsGameMode::AGoogleMapsGameMode()
+{
+	GPSConnected = false;
+	SplitOverDistance = 0.2f;
+}
 
 void AGoogleMapsGameMode::BeginPlay()
 {
-	Super::BeginPlay();
 	GoogleMapsGameMode_c = this;
+	//if (shouldResumeTracking_static) GPSConnected = true;
+	ShouldResumeTracking = shouldResumeTracking_static;
+	Super::BeginPlay();
 }
 
-void AGoogleMapsGameMode::UpdateSplit(float overDistance)
+void AGoogleMapsGameMode::UpdateSplit()
 {
 	float d = 0;
 	int i = GPSPoints.Num() - 1;
-	while (d < overDistance && i > 0)
+	while (d < SplitOverDistance && i > 0)
 	{
 		d += getDistanceFromLatLonInKm(GPSPoints[i].Latitude, GPSPoints[i].Longitude,
 			GPSPoints[i - 1].Latitude, GPSPoints[i - 1].Longitude);
 		i--;
-
-		//if (i == 0) { // Distance isn't overDistance yet
-		//	Split = FTimespan(0);
-		//	return;
-		//}
 	}
 	if (d > 0)
 		Split = (GPSPoints.Top().Time - GPSPoints[i].Time) * (1 / d);
-
 }
 
-bool AGoogleMapsGameMode::ShouldResumeTracking() const
+void AGoogleMapsGameMode::UpdateTotalDistance()
 {
-	return shouldResumeTracking;
+	TotalDistance += getDistanceFromLatLonInKm(
+		GPSPoints.Last(1).Latitude,
+		GPSPoints.Last(1).Longitude,
+		GPSPoints.Last(0).Latitude,
+		GPSPoints.Last(0).Longitude);
 }
 
-void AGoogleMapsGameMode::ConnectToGoogleAPI()
+void AGoogleMapsGameMode::RecalculateTotalDistance()
+{
+	if (GPSPoints.Num() > 1)
+	{
+		for (int i = 0; i < GPSPoints.Num() - 2; i++) {
+			TotalDistance += getDistanceFromLatLonInKm(
+				GPSPoints.Last(i + 1).Latitude,
+				GPSPoints.Last(i + 1).Longitude,
+				GPSPoints.Last(i).Latitude,
+				GPSPoints.Last(i).Longitude);
+		}
+	}
+}
+
+void AGoogleMapsGameMode::RunGPSService()
 {
 #if PLATFORM_ANDROID
-	CallVoidMethodWithExceptionCheck(AndroidThunkJava_ConnectGoogleAPI);
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_RunGPSService);
 #endif
 }
 
-void AGoogleMapsGameMode::DisconnectFromGoogleAPI()
+void AGoogleMapsGameMode::StartTracking()
 {
+	GPSConnected = true;
+	startTime = FDateTime::UtcNow();
 #if PLATFORM_ANDROID
-	CallVoidMethodWithExceptionCheck(AndroidThunkJava_DisconnectGoogleAPI);
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_StartTracking);
+#endif
+}
+
+void AGoogleMapsGameMode::KillGPSService()
+{
+	GPSConnected = false;
+#if PLATFORM_ANDROID
+	CallVoidMethodWithExceptionCheck(AndroidThunkJava_KillGPSService);
 #endif
 }
 
@@ -57,21 +87,14 @@ void AGoogleMapsGameMode::DisconnectFromGoogleAPI()
 //Privates
 
 void AGoogleMapsGameMode::LocationChanged(float lat, float lng, int64 time)
-{	
-	FDateTime dateTime = FDateTime::FromUnixTimestamp(time/1000);
-	//First time this is run
-	if (!GPSConnected) {
-		GPSConnected = true;
-	}
+{
+	FDateTime dateTime = FDateTime::FromUnixTimestamp(time / 1000);
 
 	GPSPoints.Emplace(lat, lng, dateTime);
 
 	if (GPSPoints.Num() > 1) {
-		UpdateSplit(0.2f);
-		TotalDistance += getDistanceFromLatLonInKm(GPSPoints.Last(1).Latitude,
-			GPSPoints.Last(1).Longitude,
-			lat,
-			lng);
+		UpdateSplit();
+		UpdateTotalDistance();
 	}
 
 	// Send location to BP
@@ -81,7 +104,7 @@ void AGoogleMapsGameMode::LocationChanged(float lat, float lng, int64 time)
 float AGoogleMapsGameMode::getDistanceFromLatLonInKm(float lat1, float lon1, float lat2, float lon2) {
 	float x = (lon2 - lon1)*(PI / 180.f) * FGenericPlatformMath::Cos((lat1 + lat2) * (PI / 180.f) / 2);
 	float y = (lat2 - lat1)* (PI / 180.f);
-	float R = 6371;
+	float R = 6371; // Radius of the earth
 	return FGenericPlatformMath::Sqrt(x*x + y*y) * R;
 }
 
@@ -106,13 +129,18 @@ extern "C" void Java_com_jeevcatgames_UEMapDialog_nativeAllPoints(JNIEnv* jenv, 
 	for (int i = 0; i < pointCount; i++) {
 		GoogleMapsGameMode_c->GPSPoints.Emplace(lat[i], lng[i], FDateTime::FromUnixTimestamp(time[i] / 1000));
 	}
-	// Update with last result
-	GoogleMapsGameMode_c->LocationChanged(lat[pointCount - 1], lng[pointCount - 1], time[pointCount - 1]);
+
+	// Set start time based on first GPS point. This will be a few seconds off
+	GoogleMapsGameMode_c->startTime = FDateTime::FromUnixTimestamp(time[0] / 1000);
+	// Update total distance manually
+	GoogleMapsGameMode_c->RecalculateTotalDistance();
+	GoogleMapsGameMode_c->UpdateSplit();
+	GoogleMapsGameMode_c->GPSConnected = true;
 }
 
 extern "C" void Java_com_epicgames_ue4_GameActivity_nativeResumeTracking(JNIEnv* jenv, jobject thiz)
 {
 	UE_LOG(LogGoogleMaps, Log, TEXT("nativeResumeTracking"));
-	shouldResumeTracking = true;
+	shouldResumeTracking_static = true;
 }
 #endif

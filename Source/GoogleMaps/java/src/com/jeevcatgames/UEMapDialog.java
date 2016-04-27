@@ -3,6 +3,8 @@ package com.jeevcatgames;
 /**
  * Custom Dialog which holds a MapFragment for use in UnrealEngine
  * Copyright 2016, Sam Jeeves. All rights reserved.
+ *
+ *
  */
 
 import android.app.Activity;
@@ -42,7 +44,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     public native void nativeAllPoints(double[] latArray, double[] lngArray, long[] timeArray);
 
     public static final String USER_REQUEST_GPS_SETTING = "com.jeevcatgames.UEMapDialog.USER_REQUEST_GPS_SETTING";
-    public static final String START_LOCATION_UPDATES = "com.jeevcatgames.UEMapDialog.START_LOCATION_UPDATES";
     public static final String UPDATE_MAP = "com.jeevcatgames.UEMapDialog.UPDATE_MAP";
     public static final String RECEIVE_ALL_POINTS = "com.jeevcatgames.UEMapDialog.RECEIVE_ALL_POINTS";
     private static final String TAG = "UEMapDialog";
@@ -110,7 +111,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(USER_REQUEST_GPS_SETTING);
-        intentFilter.addAction(START_LOCATION_UPDATES);
         intentFilter.addAction(UPDATE_MAP);
         intentFilter.addAction(RECEIVE_ALL_POINTS);
 
@@ -121,10 +121,8 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
                 Log.i(TAG, "BroadcastReceiver received: " + intent.getAction());
                 if (intent.getAction().equals(USER_REQUEST_GPS_SETTING))
                     RequestGPSEnabled((Status) intent.getParcelableExtra("Status"));
-                if (intent.getAction().equals(START_LOCATION_UPDATES))
-                    StartLocationUpdates();
                 if (intent.getAction().equals(UPDATE_MAP))
-                    UpdateMap((GPSService.LatLngTime) intent.getSerializableExtra("LatLngTime"));
+                    UpdateMap((GPSService.LatLngTime) intent.getSerializableExtra("LatLngTime"), intent.hasExtra("justPanCamera"));
                 if (intent.getAction().equals(RECEIVE_ALL_POINTS))
                     ReceiveAllPoints((ArrayList<GPSService.LatLngTime>) intent.getSerializableExtra("Points"));
             }
@@ -196,11 +194,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         vto.addOnGlobalLayoutListener(this);
     }
 
-    public void StartLocationUpdates() {
-        Intent intent = new Intent(GPSService.START_TRACKING);
-        parentActivity.sendBroadcast(intent);
-    }
-
     private void RequestGPSEnabled(Status status) {
         Log.i(TAG, "Displaying GPS settings request");
         try {
@@ -214,16 +207,18 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         }
     }
 
-    private void UpdateMap(final GPSService.LatLngTime point) {
+    private void UpdateMap(final GPSService.LatLngTime point, final boolean justPanCamera) {
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 if (followUser) {
                     googleMap.animateCamera(CameraUpdateFactory.newLatLng(point.toLatLng()));
                 }
-                List<LatLng> points = mapPolyline.getPoints();
-                points.add(point.toLatLng());
-                mapPolyline.setPoints(points);
+                if(!justPanCamera) {
+                    List<LatLng> points = mapPolyline.getPoints();
+                    points.add(point.toLatLng());
+                    mapPolyline.setPoints(points);
+                }
             }
         });
 
