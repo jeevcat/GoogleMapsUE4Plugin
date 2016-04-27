@@ -69,7 +69,7 @@ void AGoogleMapsGameMode::RunGPSService()
 void AGoogleMapsGameMode::StartTracking()
 {
 	GPSConnected = true;
-	startTime = FDateTime::UtcNow();
+	StartTime = FDateTime::UtcNow();
 #if PLATFORM_ANDROID
 	CallVoidMethodWithExceptionCheck(AndroidThunkJava_StartTracking);
 #endif
@@ -131,7 +131,7 @@ extern "C" void Java_com_jeevcatgames_UEMapDialog_nativeAllPoints(JNIEnv* jenv, 
 	}
 
 	// Set start time based on first GPS point. This will be a few seconds off
-	GoogleMapsGameMode_c->startTime = FDateTime::FromUnixTimestamp(time[0] / 1000);
+	GoogleMapsGameMode_c->StartTime = FDateTime::FromUnixTimestamp(time[0] / 1000);
 	// Update total distance manually
 	GoogleMapsGameMode_c->RecalculateTotalDistance();
 	GoogleMapsGameMode_c->UpdateSplit();

@@ -7,6 +7,34 @@
 
 #include "GoogleMapsGameMode.generated.h"
 
+
+USTRUCT(BlueprintType)
+struct FLocationStruct
+{
+	GENERATED_USTRUCT_BODY()
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Google Maps")
+		float Latitude;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Google Maps")
+		float Longitude;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Google Maps")
+		FDateTime Time;
+
+	FLocationStruct()
+		: Latitude(0),
+		Longitude(0),
+		Time(0)
+	{}
+
+	FLocationStruct(float lat, float lng, FDateTime time)
+		: Latitude(lat),
+		Longitude(lng),
+		Time(time)
+	{}
+};
+
+
 /**
  * 
  */
@@ -35,7 +63,7 @@ public:
 
 	/** Tracking start time (UTC) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
-	FDateTime startTime;
+	FDateTime StartTime;
 
 	/** Total distance in km */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
