@@ -77,7 +77,8 @@
 			private Intent serviceIntent;
 			private boolean startedWithServiceRunning;
 
-			public void AndroidThunkJava_CreateGoogleMap(final float posX, final float posY, 
+			public void AndroidThunkJava_CreateGoogleMap(final boolean trackingEnabled,
+				final float posX, final float posY, 
 				final float sizeX, final float sizeY, float renderX) {
 			        Log.debug("In AndroidThunkJava_CreateGoogleMap");
 			        DisplayMetrics dm = getResources().getDisplayMetrics();
@@ -86,7 +87,8 @@
 			        Log.debug("new UEMapDialog");
 			        _activity.runOnUiThread(new Runnable() {
 					    public void run() {
-					        mMapDialog = new UEMapDialog(_activity, startedWithServiceRunning,
+					        mMapDialog = new UEMapDialog(_activity, 
+					        	trackingEnabled, startedWithServiceRunning,
 					        	(int)(posX * scale), (int) (posY * scale), 
 					        	(int) (sizeX * scale), (int) (sizeY * scale));
 					        mMapDialog.show();
@@ -107,6 +109,7 @@
 
 		    public void AndroidThunkJava_KillGPSService() {
 		        Log.debug("In AndroidThunkJava_KillGPSService");
+		        startedWithServiceRunning = false;
 		       	stopService(serviceIntent);
 		    }
 
@@ -118,6 +121,13 @@
 		    	}
 		    }
 
+		    public void AndroidThunkJava_DrawHistoricalPolyline(float lat[], float lng[]) {
+		    	Log.debug("In AndroidThunkJava_DrawHistoricalPolyline");
+
+		    	Intent intent = new Intent(UEMapDialog.RECEIVE_ALL_POINTS);
+		        intent.putExtra("lat", lat).putExtra("lng", lng);
+		        sendBroadcast(intent);
+		    }
 
 		    private boolean isServiceRunning(Class&lt;?&gt; serviceClass) {
 			    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);

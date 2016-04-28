@@ -29,6 +29,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
@@ -42,6 +43,8 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     public native void nativeLocationChanged(double lat, double lng, long time);
     @SuppressWarnings("JniMissingFunction")
     public native void nativeAllPoints(double[] latArray, double[] lngArray, long[] timeArray);
+    @SuppressWarnings("JniMissingFunction")
+    public native void nativeMapReady();
 
     public static final String USER_REQUEST_GPS_SETTING = "com.jeevcatgames.UEMapDialog.USER_REQUEST_GPS_SETTING";
     public static final String UPDATE_MAP = "com.jeevcatgames.UEMapDialog.UPDATE_MAP";
@@ -52,7 +55,7 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     private Activity parentActivity;
     private View frame;
     private int layoutId, mapContainerId;
-    private boolean followUser, serviceAlreadyRunning;
+    private boolean followUser, trackingEnabled, reconnectToTrackingService;
     private MapFragment mapFragment;
     private GoogleMap googleMap;
     private Polyline mapPolyline;
@@ -60,7 +63,8 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
 
 
     // Constructor
-    public UEMapDialog(final Context context, boolean serviceAlreadyRunning, int pX, int pY, int sX, int sY) {
+    public UEMapDialog(final Context context, boolean trackingEnabled,
+                       boolean reconnectToTrackingService, int pX, int pY, int sX, int sY) {
         super(context, android.R.style.Theme_Panel);
         parentActivity = (Activity) context;
         followUser = true;
@@ -69,7 +73,8 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
         this.posY = pY;
         this.sizeX = sX;
         this.sizeY = sY;
-        this.serviceAlreadyRunning = serviceAlreadyRunning;
+        this.trackingEnabled = trackingEnabled;
+        this.reconnectToTrackingService = reconnectToTrackingService;
     }
 
     /**
@@ -122,22 +127,33 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
                 if (intent.getAction().equals(USER_REQUEST_GPS_SETTING))
                     RequestGPSEnabled((Status) intent.getParcelableExtra("Status"));
                 if (intent.getAction().equals(UPDATE_MAP))
-                    UpdateMap((GPSService.LatLngTime) intent.getSerializableExtra("LatLngTime"), intent.hasExtra("justPanCamera"));
-                if (intent.getAction().equals(RECEIVE_ALL_POINTS))
-                    ReceiveAllPoints((ArrayList<GPSService.LatLngTime>) intent.getSerializableExtra("Points"));
+                    UpdateMap((GPSService.LatLngTime) intent.getSerializableExtra("LatLngTime"),
+                            intent.hasExtra("justPanCamera"));
+                if (intent.getAction().equals(RECEIVE_ALL_POINTS)) {
+                    ArrayList<GPSService.LatLngTime> points =
+                            (ArrayList<GPSService.LatLngTime>) intent.getSerializableExtra("Points");
+                    if (points != null) {
+                        ReceiveAllPoints(points);
+                    } else {
+                        float lat[] = intent.getFloatArrayExtra("lat");
+                        float lng[] = intent.getFloatArrayExtra("lng");
+                        ReceiveAllPoints(lat,lng);
+                    }
+                }
             }
         };
 
         parentActivity.registerReceiver(receiver, intentFilter);
 
-        if(serviceAlreadyRunning) {
-            Intent intent = new Intent(GPSService.REQUEST_ALL_POINTS);
-            parentActivity.sendBroadcast(intent);
-            Log.i(TAG, "Service already running. Requesting all points.");
-        } else {
-            Intent intent = new Intent(GPSService.CONNECT_TO_GOOGLE_API);
-            parentActivity.sendBroadcast(intent);
+        if(trackingEnabled) {
+            if (reconnectToTrackingService) {
+                parentActivity.sendBroadcast(new Intent(GPSService.REQUEST_ALL_POINTS));
+                Log.i(TAG, "Service already running. Requesting all points.");
+            } else {
+                parentActivity.sendBroadcast(new Intent(GPSService.CONNECT_TO_GOOGLE_API));
+            }
         }
+
     }
 
     @Override
@@ -161,8 +177,10 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     public void onMapReady(GoogleMap map) {
         Log.i(TAG, "Google Map ready");
         googleMap = map;
-        map.setMyLocationEnabled(true);
-        map.animateCamera(CameraUpdateFactory.zoomTo(18));
+        if(trackingEnabled) {
+            map.setMyLocationEnabled(true);
+            map.animateCamera(CameraUpdateFactory.zoomTo(18));
+        }
         PolylineOptions polyOptions = new PolylineOptions();
         mapPolyline = map.addPolyline(polyOptions);
         googleMap.setOnMyLocationButtonClickListener(
@@ -173,6 +191,8 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
                         return false;
                     }
                 });
+        if(!trackingEnabled)
+            nativeMapReady();
     }
 
 
@@ -231,7 +251,6 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     private void ReceiveAllPoints(ArrayList<GPSService.LatLngTime> points) {
         Log.i(TAG, "Receiving all points.");
         ArrayList<LatLng> polyPoints = new ArrayList<LatLng>();
-
         int size = points.size();
         double[] latArray = new double[size];
         double[] lngArray = new double[size];
@@ -240,12 +259,23 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
             latArray[i] = points.get(i).Latitude;
             lngArray[i] = points.get(i).Longitude;
             timeArray[i] = points.get(i).UTCTime;
-
             polyPoints.add(points.get(i).toLatLng());
         }
         mapPolyline.setPoints(polyPoints);
-
         nativeAllPoints(latArray, lngArray, timeArray);
+    }
+
+    private void ReceiveAllPoints(float[] lat, float[] lng) {
+        LatLngBounds.Builder b = new LatLngBounds.Builder();
+        ArrayList<LatLng> polyPoints = new ArrayList<LatLng>();
+        for(int i = 0; i < lat.length; i++) {
+            LatLng ll = new LatLng(lat[i],lng[i]);
+            polyPoints.add(ll);
+            b.include(ll);
+        }
+        mapPolyline.setPoints(polyPoints);
+        LatLngBounds bounds = b.build();
+        googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 5));
     }
 
 }

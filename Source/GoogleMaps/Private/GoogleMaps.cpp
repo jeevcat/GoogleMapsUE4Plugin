@@ -15,6 +15,7 @@ static jmethodID AndroidThunkJava_RemoveGoogleMap;
 static jmethodID AndroidThunkJava_RunGPSService;
 static jmethodID AndroidThunkJava_KillGPSService;
 static jmethodID AndroidThunkJava_StartTracking;
+static jmethodID AndroidThunkJava_DrawHistoricalPolyline;
 
 void CallVoidMethodWithExceptionCheck(jmethodID Method, ...)
 {
@@ -53,11 +54,12 @@ void FGoogleMaps::StartupModule()
 	{
 		if (FJavaWrapper::GameActivityClassID)
 		{
-			AndroidThunkJava_CreateGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_CreateGoogleMap", "(FFFFF)V", false);
+			AndroidThunkJava_CreateGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_CreateGoogleMap", "(ZFFFFF)V", false);
 			AndroidThunkJava_RemoveGoogleMap = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_RemoveGoogleMap", "()V", true);
 			AndroidThunkJava_RunGPSService = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_RunGPSService", "()V", true);
 			AndroidThunkJava_KillGPSService = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_KillGPSService", "()V", true);
 			AndroidThunkJava_StartTracking = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_StartTracking", "()V", true);
+			AndroidThunkJava_DrawHistoricalPolyline = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "AndroidThunkJava_DrawHistoricalPolyline", "([F[F)V", false);
 		}
 	}
 #endif
