@@ -14,6 +14,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -199,7 +200,12 @@ public class UEMapDialog extends Dialog implements ViewTreeObserver.OnGlobalLayo
     @Override
     public void onGlobalLayout() {
         Log.i(TAG, "In OnResume OnGlobalLayoutListener");
-        parentActivity.findViewById(android.R.id.content).getViewTreeObserver().removeOnGlobalLayoutListener(this);
+        ViewTreeObserver vto = parentActivity.findViewById(android.R.id.content).getViewTreeObserver();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            vto.removeGlobalOnLayoutListener(this);
+        } else {
+            vto.removeOnGlobalLayoutListener(this);
+        }
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
