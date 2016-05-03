@@ -55,7 +55,6 @@ void UGoogleMapWidget::CreateGoogleMap(FVector2D Position, FVector2D Size)
 	jfloat pY = Position.Y;
 	jfloat sX = Size.X;
 	jfloat sY = Size.Y;
-	UE_LOG(LogGoogleMaps, Log, TEXT("Displaying GoogleMap at %.1f,%.1f, size:%.1f,%.1f"), pX, pY, sX, sY);
 	CallVoidMethodWithExceptionCheck(AndroidThunkJava_CreateGoogleMap, trackingEnabled, pX, pY, sX, sY, resX);
 #endif
 }
@@ -139,10 +138,10 @@ void UGoogleMapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 	// Do once
 	if (!initialised) {
 		initialised = true;
-		FVector2D pixel;
-		FVector2D viewport;
+		FVector2D pixel, viewport, size;
 		USlateBlueprintLibrary::LocalToViewport(this, MyGeometry, FVector2D(0, 0), pixel, viewport);
-		FVector2D size = USlateBlueprintLibrary::GetLocalSize(MyGeometry);
+		USlateBlueprintLibrary::LocalToViewport(this, MyGeometry, USlateBlueprintLibrary::GetLocalSize(MyGeometry), size, viewport);
+		UE_LOG(LogGoogleMaps, Log, TEXT("Displaying GoogleMap at %.1f,%.1f, size:%.1f,%.1f"), pixel.X, pixel.Y, size.X, size.Y);
 		CreateGoogleMap(pixel, size);
 	}
 

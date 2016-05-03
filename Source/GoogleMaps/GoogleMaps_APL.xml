@@ -83,6 +83,7 @@
 			        Log.debug("In AndroidThunkJava_CreateGoogleMap");
 			        DisplayMetrics dm = getResources().getDisplayMetrics();
 			        final float scale = dm.widthPixels / renderX;
+			        Log.debug("dm:" + dm.widthPixels + "render:" + renderX);
 
 			        Log.debug("new UEMapDialog");
 			        _activity.runOnUiThread(new Runnable() {
