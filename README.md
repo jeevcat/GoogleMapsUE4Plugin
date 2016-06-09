@@ -9,3 +9,11 @@ Download here: https://dl-ssl.google.com/android/repository/google_play_services
 Extract to (UE Engine directory)\Engine\Build\Android\Java\JavaLibs.
 
 Delete / move the old "google-play-services_lib_rev19" folder out of here too, or you'll get build errors.
+
+## Installation
+Place everything in its own subdirectory in a Plugins directory within your UE4 project.
+
+i.e. Clone / extract here -> (MyAwesomeProject)\Plugins\Google Maps\
+
+## Usage
+Coming soon...
