@@ -1,6 +1,7 @@
 package com.jeevcatgames;
 
 import android.app.Notification;
+import android.support.v4.app.NotificationCompat;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -219,11 +220,11 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
     @Override
     public void onLocationChanged(Location loc) {
         if(tracking) {
-            if (loc.getAccuracy() < 100.0f) {
+            if (loc.getAccuracy() < 50.0f) {
                 LatLngTime newPoint = new LatLngTime(loc);
                 allPoints.add(newPoint);
                 if (gameIsAlive) {
-                    Log.i(TAG, "Game is alive. Sending point.");
+                    Log.i(TAG, "Game is alive. Sending point. Alt:" + loc.getAltitude() + ", acc:"+loc.getAccuracy());
                     Intent intent = new Intent(UEMapDialog.UPDATE_MAP);
                     intent.putExtra("LatLngTime", newPoint);
                     sendBroadcast(intent);
@@ -250,6 +251,8 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
 
         LocationServices.FusedLocationApi.requestLocationUpdates(apiClient,
                 locationRequest, this);
+
+        // Don't add the point to the path. Just pan Camera
         Intent intent = new Intent(UEMapDialog.UPDATE_MAP);
         intent.putExtra("LatLngTime", new LatLngTime(
                 LocationServices.FusedLocationApi.getLastLocation(apiClient)))
@@ -258,17 +261,18 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
 
     }
 
+    // Called from UE when the use wishes to start recording GPS points
     private void StartTracking() {
-        LatLngTime firstPoint = new LatLngTime(
-                LocationServices.FusedLocationApi.getLastLocation(apiClient));
-        allPoints.add(firstPoint);
-        if(gameIsAlive) {
-            Log.i(TAG, "Sending first point.");
-            Intent intent = new Intent(UEMapDialog.UPDATE_MAP);
-            intent.putExtra("LatLngTime", firstPoint);
-            sendBroadcast(intent);
-            gameIsAlive = false;
-        }
+//        LatLngTime firstPoint = new LatLngTime(
+//                LocationServices.FusedLocationApi.getLastLocation(apiClient));
+//        allPoints.add(firstPoint);
+//        if(gameIsAlive) {
+//            Log.i(TAG, "Sending first point.");
+//            Intent intent = new Intent(UEMapDialog.UPDATE_MAP);
+//            intent.putExtra("LatLngTime", firstPoint);
+//            sendBroadcast(intent);
+//            gameIsAlive = false;
+//        }
         tracking = true;
     }
 
@@ -304,7 +308,7 @@ public class GPSService extends Service implements GoogleApiClient.ConnectionCal
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         // Set the info for the views that show in the notification panel.
-        Notification notification = new Notification.Builder(this)
+        Notification notification = new NotificationCompat.Builder(this)
                 .setTicker(title)  // the status text
                 .setSmallIcon(iconId)
                 .setWhen(System.currentTimeMillis())  // the time stamp

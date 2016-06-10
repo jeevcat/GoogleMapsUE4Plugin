@@ -65,7 +65,7 @@ public:
 
 	/** Should tracking be enabled for this map */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Google Maps")
-		bool trackingEnabled;
+	bool trackingEnabled;
 
 	/** Has the Google API successfully established a GPS connection? */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Google Maps")
